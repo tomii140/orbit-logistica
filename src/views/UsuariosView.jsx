@@ -1,183 +1,241 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../config/supabaseClient';
 
-export default function SoporteView({ usuarioActual }) {
-  const [tickets, setTickets] = useState([]);
-  const [asunto, setAsunto] = useState('');
-  const [tipo, setTipo] = useState('Consulta');
-  const [mensaje, setMensaje] = useState('');
-  const [cargando, setCargando] = useState(true);
+export default function UsuariosView({ usuarioActual, empleados, onReload, styles }) {
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoApellido, setNuevoApellido] = useState('');
+  const [nuevoEmail, setNuevoEmail] = useState('');
+  const [nuevoRol, setNuevoRol] = useState('EMPLEADO');
+  const [mensajeEstado, setMensajeEstado] = useState({ tipo: '', texto: '' });
+  const [guardando, setGuardando] = useState(false);
 
-  const esGestionador = ['ADMIN', 'SUPERVISOR'].includes(usuarioActual?.rol?.toUpperCase());
+  const esAdmin = usuarioActual?.rol === 'ADMIN';
 
-  const cargarTickets = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('soporte_tickets')
-        .select('*, empleados(nombre, apellido, email)')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error al cargar tickets:', error.message);
-      } else {
-        setTickets(data || []);
-      }
-    } catch (err) {
-      console.error('Error:', err);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  useEffect(() => {
-    cargarTickets();
-
-    const channel = supabase
-      .channel('tabla_soporte_tickets')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'soporte_tickets' },
-        () => cargarTickets()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const crearTicket = async (e) => {
+  const handleCrearUsuario = async (e) => {
     e.preventDefault();
-    if (!asunto.trim() || !mensaje.trim()) return;
+    setMensajeEstado({ tipo: '', texto: '' });
 
-    // Obtener ID del empleado
-    const { data: emp } = await supabase
-      .from('empleados')
-      .select('id')
-      .eq('email', usuarioActual.email)
-      .single();
+    if (!nuevoNombre.trim() || !nuevoApellido.trim() || !nuevoEmail.trim()) {
+      setMensajeEstado({ tipo: 'error', texto: 'Completá todos los campos obligatorios.' });
+      return;
+    }
 
-    if (!emp) return alert('Empleado no encontrado en el sistema.');
+    setGuardando(true);
+    try {
+      const emailLimpio = nuevoEmail.trim().toLowerCase();
 
-    const payload = {
-      empleado_id: emp.id,
-      tipo,
-      asunto: asunto.trim(),
-      mensaje: mensaje.trim(),
-      estado: 'Pendiente'
-    };
+      // Verificar si ya existe
+      const { data: existente } = await supabase
+        .from('empleados')
+        .select('id')
+        .eq('email', emailLimpio)
+        .maybeSingle();
 
-    const { error } = await supabase.from('soporte_tickets').insert([payload]);
+      if (existente) {
+        setMensajeEstado({ tipo: 'error', texto: 'El correo electrónico ya está registrado.' });
+        setGuardando(false);
+        return;
+      }
 
-    if (error) {
-      alert(`Error al enviar ticket: ${error.message}`);
-    } else {
-      setAsunto('');
-      setMensaje('');
-      cargarTickets();
+      // Insertar nuevo usuario
+      const { error } = await supabase.from('empleados').insert([
+        {
+          nombre: nuevoNombre.trim(),
+          apellido: nuevoApellido.trim(),
+          email: emailLimpio,
+          rol: nuevoRol
+        }
+      ]);
+
+      if (error) throw error;
+
+      setMensajeEstado({ tipo: 'exito', texto: 'Usuario dado de alta exitosamente.' });
+      setNuevoNombre('');
+      setNuevoApellido('');
+      setNuevoEmail('');
+      setNuevoRol('EMPLEADO');
+      if (onReload) onReload();
+    } catch (err) {
+      console.error('Error al dar de alta:', err);
+      setMensajeEstado({ tipo: 'error', texto: `Error: ${err.message}` });
+    } finally {
+      setGuardando(false);
     }
   };
 
-  const responderTicket = async (id, respuesta) => {
-    if (!respuesta.trim()) return;
-    const { error } = await supabase
-      .from('soporte_tickets')
-      .update({ respuesta_admin: respuesta, estado: 'Resuelto' })
-      .eq('id', id);
+  const handleEliminarUsuario = async (id, email) => {
+    if (email.toLowerCase() === usuarioActual.email.toLowerCase()) {
+      alert('No podés eliminar tu propia cuenta activa.');
+      return;
+    }
 
-    if (error) alert(`Error al responder: ${error.message}`);
-    else cargarTickets();
+    if (!window.confirm(`¿Confirmás la eliminación del usuario ${email}?`)) return;
+
+    try {
+      const { error } = await supabase.from('empleados').delete().eq('id', id);
+      if (error) throw error;
+      if (onReload) onReload();
+    } catch (err) {
+      alert(`Error al eliminar: ${err.message}`);
+    }
   };
 
   return (
-    <div style={{ padding: '20px', color: '#fff', maxWidth: '900px', margin: '0 auto' }}>
-      <h2>📣 Soporte y Tickets</h2>
-      <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>
-        Plataforma de comunicación con administración para solicitudes, reclamos y soporte técnico.
-      </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div>
+        <h2 style={{ margin: '0 0 4px 0' }}>👥 Alta y Gestión de Usuarios</h2>
+        <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>
+          Módulo para registrar personal y asignar roles dentro del sistema.
+        </p>
+      </div>
 
-      {/* Formulario de Alta de Ticket */}
-      <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '15px', color: '#38bdf8', marginTop: 0 }}>Crear Nuevo Ticket</h3>
-        <form onSubmit={crearTicket} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <select 
-              value={tipo} 
-              onChange={(e) => setTipo(e.target.value)}
-              style={{ backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '8px', borderRadius: '4px' }}
-            >
-              <option value="Consulta">Consulta General</option>
-              <option value="Inconveniente">Inconveniente Técnico</option>
-              <option value="Reclamo">Reclamo / Horarios</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Asunto"
-              value={asunto}
-              onChange={(e) => setAsunto(e.target.value)}
-              style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '8px', borderRadius: '4px' }}
-              required
-            />
+      {/* Formulario de Alta */}
+      <div style={styles.cardSection}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', color: '#38bdf8' }}>➕ Registrar Nuevo Usuario</h3>
+
+        {mensajeEstado.texto && (
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              fontSize: '13px',
+              backgroundColor: mensajeEstado.tipo === 'exito' ? '#065f46' : '#991b1b',
+              color: mensajeEstado.tipo === 'exito' ? '#34d399' : '#fca5a5'
+            }}
+          >
+            {mensajeEstado.texto}
           </div>
-          <textarea
-            placeholder="Escribe el detalle de tu solicitud..."
-            value={mensaje}
-            onChange={(e) => setMensaje(e.target.value)}
-            style={{ backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '8px', borderRadius: '4px', minHeight: '70px', resize: 'vertical' }}
-            required
-          />
-          <button type="submit" style={{ backgroundColor: '#16a34a', color: '#fff', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', alignSelf: 'flex-end' }}>
-            Enviar Ticket
+        )}
+
+        <form onSubmit={handleCrearUsuario}>
+          <div style={styles.formGrid}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Nombre</label>
+              <input
+                type="text"
+                value={nuevoNombre}
+                onChange={(e) => setNuevoNombre(e.target.value)}
+                placeholder="Ej: Juan"
+                style={{ ...styles.inputTable, width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Apellido</label>
+              <input
+                type="text"
+                value={nuevoApellido}
+                onChange={(e) => setNuevoApellido(e.target.value)}
+                placeholder="Ej: Pérez"
+                style={{ ...styles.inputTable, width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Email Institucional / Gmail</label>
+              <input
+                type="email"
+                value={nuevoEmail}
+                onChange={(e) => setNuevoEmail(e.target.value)}
+                placeholder="usuario@empresa.com"
+                style={{ ...styles.inputTable, width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Rol Asignado</label>
+              <select
+                value={nuevoRol}
+                onChange={(e) => setNuevoRol(e.target.value)}
+                style={{ ...styles.inputTable, width: '100%', boxSizing: 'border-box' }}
+              >
+                <option value="EMPLEADO">EMPLEADO</option>
+                <option value="SUPERVISOR">SUPERVISOR</option>
+                {esAdmin && <option value="ADMIN">ADMINISTRADOR</option>}
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={guardando}
+            style={{ ...styles.btnSuccess, width: '100%', fontWeight: 'bold', cursor: guardando ? 'not-allowed' : 'pointer' }}
+          >
+            {guardando ? 'Guardando...' : 'Registrar Usuario'}
           </button>
         </form>
       </div>
 
-      {/* Lista de Tickets */}
-      <div>
-        <h3 style={{ fontSize: '16px', color: '#f8fafc' }}>Historial de Solicitudes</h3>
-        {cargando ? (
-          <p style={{ color: '#38bdf8' }}>Cargando registros...</p>
-        ) : tickets.length === 0 ? (
-          <p style={{ color: '#64748b' }}>No existen tickets registrados en este momento.</p>
-        ) : (
-          tickets.map((t) => (
-            <div key={t.id} style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '6px', padding: '14px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>[{t.tipo}] {t.asunto}</span>
-                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: t.estado === 'Resuelto' ? '#065f46' : '#854d0e', color: t.estado === 'Resuelto' ? '#34d399' : '#fef08a' }}>
-                  {t.estado}
-                </span>
-              </div>
-              <p style={{ fontSize: '13px', margin: '4px 0', color: '#cbd5e1' }}>{t.mensaje}</p>
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
-                Enviado por: {t.empleados?.nombre} {t.empleados?.apellido} ({t.empleados?.email}) - {new Date(t.created_at).toLocaleString()}
-              </div>
+      {/* Tabla de Usuarios Registrados */}
+      <div style={styles.cardSection}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', color: '#38bdf8' }}>
+          📋 Personal Registrado ({empleados.length})
+        </h3>
 
-              {t.respuesta_admin && (
-                <div style={{ marginTop: '10px', backgroundColor: '#0f172a', padding: '10px', borderRadius: '4px', borderLeft: '3px solid #16a34a' }}>
-                  <b style={{ fontSize: '12px', color: '#4ade80' }}>Respuesta de Administración:</b>
-                  <p style={{ fontSize: '13px', margin: '2px 0 0 0', color: '#e2e8f0' }}>{t.respuesta_admin}</p>
-                </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={styles.table}>
+            <thead>
+              <tr style={styles.thRow}>
+                <th style={{ ...styles.td, textAlign: 'left' }}>Nombre y Apellido</th>
+                <th style={{ ...styles.td, textAlign: 'left' }}>Email</th>
+                <th style={{ ...styles.td, textAlign: 'center' }}>Rol</th>
+                {esAdmin && <th style={{ ...styles.td, textAlign: 'center' }}>Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {empleados.length === 0 ? (
+                <tr>
+                  <td colSpan={esAdmin ? 4 : 3} style={{ ...styles.td, textAlign: 'center', color: '#64748b' }}>
+                    No hay usuarios registrados.
+                  </td>
+                </tr>
+              ) : (
+                empleados.map((emp) => (
+                  <tr key={emp.id}>
+                    <td style={styles.td}>{emp.nombre} {emp.apellido}</td>
+                    <td style={{ ...styles.td, color: '#94a3b8' }}>{emp.email}</td>
+                    <td style={{ ...styles.td, textAlign: 'center' }}>
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          backgroundColor:
+                            emp.rol?.toUpperCase() === 'ADMIN'
+                              ? '#854d0e'
+                              : emp.rol?.toUpperCase() === 'SUPERVISOR'
+                              ? '#1e40af'
+                              : '#166534',
+                          color: '#fff'
+                        }}
+                      >
+                        {(emp.rol || 'EMPLEADO').toUpperCase()}
+                      </span>
+                    </td>
+                    {esAdmin && (
+                      <td style={{ ...styles.td, textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleEliminarUsuario(emp.id, emp.email)}
+                          style={{
+                            backgroundColor: '#991b1b',
+                            color: '#fca5a5',
+                            border: 'none',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))
               )}
-
-              {esGestionador && !t.respuesta_admin && (
-                <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Escribir respuesta administrativa..."
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        responderTicket(t.id, e.target.value);
-                        e.target.value = '';
-                      }
-                    }}
-                    style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '4px', fontSize: '12px' }}
-                  />
-                </div>
-              )}
-            </div>
-          ))
-        )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

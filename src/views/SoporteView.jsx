@@ -20,7 +20,7 @@ export default function SoporteView({ usuarioActual }) {
         setMensajes(data || []);
       }
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error inesperado:', err);
     } finally {
       setCargando(false);
     }
@@ -29,7 +29,6 @@ export default function SoporteView({ usuarioActual }) {
   useEffect(() => {
     cargarMensajes();
 
-    // Tiempo real con Supabase
     const channel = supabase
       .channel('tabla_soporte_mensajes')
       .on(
@@ -47,18 +46,25 @@ export default function SoporteView({ usuarioActual }) {
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [mensajes]);
+    if (!cargando) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [mensajes, cargando]);
 
   const enviarMensaje = async (e) => {
     e.preventDefault();
-    if (!nuevoMensaje.trim()) return;
+    const textoLimpio = nuevoMensaje.trim();
+    if (!textoLimpio || !usuarioActual) return;
+
+    const nombreCompleto = [usuarioActual.nombre, usuarioActual.apellido]
+      .filter(Boolean)
+      .join(' ') || usuarioActual.email || 'Usuario';
 
     const mensajeData = {
       remitente_email: usuarioActual.email,
-      remitente_nombre: `${usuarioActual.nombre} ${usuarioActual.apellido}`,
-      rol: usuarioActual.rol,
-      mensaje: nuevoMensaje.trim(),
+      remitente_nombre: nombreCompleto,
+      rol: usuarioActual.rol || 'EMPLEADO',
+      mensaje: textoLimpio,
       created_at: new Date().toISOString()
     };
 
@@ -86,14 +92,23 @@ export default function SoporteView({ usuarioActual }) {
           <p style={{ color: '#64748b', textAlign: 'center', marginTop: '40px' }}>No hay mensajes en este canal todavía. Escribe el primero.</p>
         ) : (
           mensajes.map((m, index) => {
-            const esMio = m.remitente_email?.toLowerCase() === usuarioActual.email?.toLowerCase();
+            const esMio = m.remitente_email?.toLowerCase() === usuarioActual?.email?.toLowerCase();
             return (
-              <div key={m.id || index} style={{ alignSelf: esMio ? 'flex-end' : 'flex-start', maxWidth: '75%', backgroundColor: esMio ? '#2563eb' : '#334155', padding: '10px 14px', borderRadius: '8px' }}>
+              <div 
+                key={m.id || index} 
+                style={{ 
+                  alignSelf: esMio ? 'flex-end' : 'flex-start', 
+                  maxWidth: '75%', 
+                  backgroundColor: esMio ? '#2563eb' : '#334155', 
+                  padding: '10px 14px', 
+                  borderRadius: '8px' 
+                }}
+              >
                 <div style={{ fontSize: '11px', color: '#cbd5e1', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
                   <b>{m.remitente_nombre} ({m.rol})</b>
-                  <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>{m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                 </div>
-                <div style={{ fontSize: '14px', wordBreak: 'break-word' }}>{m.mensaje}</div>
+                <div style={{ fontSize: '14px', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{m.mensaje}</div>
               </div>
             );
           })
@@ -101,7 +116,7 @@ export default function SoporteView({ usuarioActual }) {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input de Envío */}
+      {/* Formulario de Envío */}
       <form onSubmit={enviarMensaje} style={{ display: 'flex', gap: '8px' }}>
         <input
           type="text"

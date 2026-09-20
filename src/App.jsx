@@ -18,27 +18,26 @@ const styles = {
   btnSubNav: { width: '100%', padding: '8px 12px', color: '#94a3b8', border: 'none', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', marginBottom: '2px', fontSize: '13px' },
   btnLink: { background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', marginBottom: '16px', padding: 0 },
   textError: { color: '#f87171', fontSize: '13px', marginBottom: '12px' },
-  headerSector: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e293b', padding: '16px', borderRadius: '6px' },
-  badgeActive: { backgroundColor: '#065f46', color: '#34d399', fontSize: '11px', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' },
   cardSection: { backgroundColor: '#1e293b', padding: '16px', borderRadius: '6px', border: '1px solid #334155' },
+  cardInner: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '6px', border: '1px solid #334155', marginBottom: '8px' },
   table: { width: '100%', borderCollapse: 'collapse', color: '#f8fafc' },
   td: { padding: '8px', borderBottom: '1px solid #334155' },
   thRow: { backgroundColor: '#0f172a', textAlign: 'left' },
-  thRowYellow: { backgroundColor: '#451a03', textAlign: 'center' },
   inputTable: { backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '4px' },
-  inputInline: { backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '2px 4px', borderRadius: '4px', width: '65px' },
-  selectSmall: { backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '4px', borderRadius: '4px' },
   formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '16px' },
   btnSuccess: { backgroundColor: '#16a34a', color: '#fff', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer' }
 };
 
 export default function App() {
+  // Log de diagnóstico en renderizado
+  console.log("🚀 [DIAGNÓSTICO] App.jsx se está ejecutando - Versión actualizada con logs");
+
   const [modoAcceso, setModoAcceso] = useState(null);
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorLogin, setErrorLogin] = useState('');
 
-  const [menuActivo, setMenuActivo] = useState('notificaciones');
+  const [menuActivo, setMenuActivo] = useState('empleados');
   const [submenuPlanificacion, setSubmenuPlanificacion] = useState(true);
   const [empleados, setEmpleados] = useState([]);
   const [notificaciones, setNotificaciones] = useState([]);
@@ -47,13 +46,15 @@ export default function App() {
     if (!emailUser) return null;
     try {
       const cleanEmail = emailUser.toLowerCase().trim();
+      console.log(`🔍 [DIAGNÓSTICO] Sincronizando usuario: ${cleanEmail}`);
+      
       let { data, error } = await supabase
         .from('empleados')
         .select('*')
         .eq('email', cleanEmail)
         .maybeSingle();
 
-      if (error) console.error("Error al consultar empleados:", error);
+      if (error) console.error("❌ Error al consultar empleados:", error);
 
       if (!data) {
         await supabase.auth.signOut();
@@ -63,49 +64,70 @@ export default function App() {
 
       if (cleanEmail === ADMIN_EMAIL_MAESTRO.toLowerCase()) {
         data.rol = 'ADMIN';
+      } else if (data.rol) {
+        data.rol = data.rol.toUpperCase();
       }
+
+      console.log("✅ [DIAGNÓSTICO] Datos de usuario obtenidos:", data);
       return data;
     } catch (err) {
-      console.error("Error validando usuario:", err);
+      console.error("❌ Error validando usuario:", err);
       await supabase.auth.signOut();
       return null;
     }
   }, []);
 
-  const cargarEmpleados = async () => {
-    const { data, error } = await supabase.from('empleados').select('*').order('id');
-    if (!error) setEmpleados(data || []);
-  };
+  const cargarEmpleados = useCallback(async () => {
+    const { data, error } = await supabase.from('empleados').select('*').order('nombre');
+    if (!error) {
+      console.log(`👥 [DIAGNÓSTICO] Empleados cargados: ${data?.length || 0}`);
+      setEmpleados(data || []);
+    } else {
+      console.error("❌ Error al cargar empleados:", error);
+    }
+  }, []);
 
   const cargarNotificaciones = useCallback(async () => {
+    if (!usuarioActual) return;
     let query = supabase.from('notificaciones').select('*, empleados(nombre, apellido, email)').order('fecha_envio', { ascending: false });
-    if (usuarioActual?.rol?.toUpperCase() === 'EMPLEADO') {
+    
+    if (usuarioActual.rol === 'EMPLEADO') {
       query = query.eq('empleado_id', usuarioActual.id);
     }
+    
     const { data, error } = await query;
-    if (!error) setNotificaciones(data || []);
+    if (!error) {
+      console.log(`🔔 [DIAGNÓSTICO] Notificaciones cargadas: ${data?.length || 0}`);
+      setNotificaciones(data || []);
+    } else {
+      console.error("❌ Error al cargar notificaciones:", error);
+    }
   }, [usuarioActual]);
+
+  const aplicarPerfilUsuario = useCallback((userProfile) => {
+    if (userProfile) {
+      const rolNormalizado = (userProfile.rol || 'EMPLEADO').toUpperCase();
+      setUsuarioActual({ ...userProfile, rol: rolNormalizado });
+      setModoAcceso(rolNormalizado);
+      setMenuActivo(rolNormalizado === 'EMPLEADO' ? 'notificaciones' : 'empleados');
+    } else {
+      setUsuarioActual(null);
+      setModoAcceso(null);
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
+
     const initSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.email && isMounted) {
           const userProfile = await sincronizarUsuarioGoogle(session.user.email);
-          if (isMounted) {
-            if (userProfile) {
-              setUsuarioActual(userProfile);
-              setModoAcceso(userProfile.rol);
-              setMenuActivo(userProfile.rol?.toUpperCase() === 'EMPLEADO' ? 'notificaciones' : 'empleados');
-            } else {
-              setUsuarioActual(null);
-              setModoAcceso(null);
-            }
-          }
+          if (isMounted) aplicarPerfilUsuario(userProfile);
         }
       } catch (err) {
-        console.error("Error al obtener sesión:", err);
+        console.error("❌ Error al obtener sesión:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -115,20 +137,14 @@ export default function App() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
+      
       if (event === 'SIGNED_IN' && session?.user?.email) {
         setLoading(true);
         const userProfile = await sincronizarUsuarioGoogle(session.user.email);
         if (isMounted) {
-          if (userProfile) {
-            setUsuarioActual(userProfile);
-            setModoAcceso(userProfile.rol);
-            setMenuActivo(userProfile.rol?.toUpperCase() === 'EMPLEADO' ? 'notificaciones' : 'empleados');
-          } else {
-            setUsuarioActual(null);
-            setModoAcceso(null);
-          }
+          aplicarPerfilUsuario(userProfile);
+          setLoading(false);
         }
-        if (isMounted) setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         if (isMounted) {
           setUsuarioActual(null);
@@ -142,52 +158,19 @@ export default function App() {
       isMounted = false;
       if (authListener?.subscription) authListener.subscription.unsubscribe();
     };
-  }, [sincronizarUsuarioGoogle]);
+  }, [sincronizarUsuarioGoogle, aplicarPerfilUsuario]);
 
   useEffect(() => {
     if (usuarioActual) {
       cargarEmpleados();
       cargarNotificaciones();
     }
-  }, [usuarioActual, cargarNotificaciones]);
+  }, [usuarioActual, cargarEmpleados, cargarNotificaciones]);
 
-  useEffect(() => {
-    if (!usuarioActual) return;
-
-    const channelNotif = supabase
-      .channel('realtime_notificaciones')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notificaciones' },
-        (payload) => {
-          if (
-            usuarioActual.rol?.toUpperCase() !== 'EMPLEADO' ||
-            payload.new.empleado_id === usuarioActual.id
-          ) {
-            playNotificationSound('info');
-            cargarNotificaciones();
-          }
-        }
-      )
-      .subscribe();
-
-    // Suscripción ajustada a la tabla 'soporte_tickets'
-    const channelSoporte = supabase
-      .channel('realtime_soporte')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'soporte_tickets' },
-        () => {
-          playNotificationSound('support');
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channelNotif);
-      supabase.removeChannel(channelSoporte);
-    };
-  }, [usuarioActual, cargarNotificaciones]);
+  const handleCambioMenu = (nuevoMenu) => {
+    console.log(`📌 [DIAGNÓSTICO] Navegando a la vista: ${nuevoMenu}`);
+    setMenuActivo(nuevoMenu);
+  };
 
   const handleGoogleLogin = async () => {
     setErrorLogin('');
@@ -243,7 +226,7 @@ export default function App() {
     );
   }
 
-  const rolUpper = (usuarioActual.rol || '').toUpperCase();
+  const rolUpper = (usuarioActual.rol || 'EMPLEADO').toUpperCase();
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
@@ -259,7 +242,7 @@ export default function App() {
           <nav style={{ padding: '12px 8px' }}>
             {rolUpper === 'EMPLEADO' ? (
               <>
-                <button type="button" onClick={() => setMenuActivo('notificaciones')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}>🔔 Mis Notificaciones</button>
+                <button type="button" onClick={() => handleCambioMenu('notificaciones')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}>🔔 Mis Notificaciones</button>
                 <div>
                   <button type="button" onClick={() => setSubmenuPlanificacion(!submenuPlanificacion)} style={{ ...styles.btnNav, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
                     <span>📅 Ver Planificaciones</span>
@@ -267,18 +250,18 @@ export default function App() {
                   </button>
                   {submenuPlanificacion && (
                     <div style={{ paddingLeft: '16px', marginTop: '2px' }}>
-                      <button type="button" onClick={() => setMenuActivo('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
-                      <button type="button" onClick={() => setMenuActivo('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
-                      <button type="button" onClick={() => setMenuActivo('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
+                      <button type="button" onClick={() => handleCambioMenu('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
+                      <button type="button" onClick={() => handleCambioMenu('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
+                      <button type="button" onClick={() => handleCambioMenu('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
                     </div>
                   )}
                 </div>
-                <button type="button" onClick={() => setMenuActivo('soporte')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}>📣 Avisos y Soporte</button>
+                <button type="button" onClick={() => handleCambioMenu('soporte')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}>📣 Avisos y Soporte</button>
               </>
             ) : (
               <>
-                <button type="button" onClick={() => setMenuActivo('empleados')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'empleados' ? '#2563eb' : 'transparent' }}>👥 {rolUpper === 'ADMIN' ? 'Alta y Gestión de Usuarios' : 'Añadir Empleados'}</button>
-                <button type="button" onClick={() => setMenuActivo('notificaciones')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}>🔔 Notificaciones y Envíos</button>
+                <button type="button" onClick={() => handleCambioMenu('empleados')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'empleados' ? '#2563eb' : 'transparent' }}>👥 {rolUpper === 'ADMIN' ? 'Alta y Gestión de Usuarios' : 'Añadir Empleados'}</button>
+                <button type="button" onClick={() => handleCambioMenu('notificaciones')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}>🔔 Notificaciones y Envíos</button>
                 <div>
                   <button type="button" onClick={() => setSubmenuPlanificacion(!submenuPlanificacion)} style={{ ...styles.btnNav, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
                     <span>📅 Planificaciones</span>
@@ -286,13 +269,13 @@ export default function App() {
                   </button>
                   {submenuPlanificacion && (
                     <div style={{ paddingLeft: '16px', marginTop: '2px' }}>
-                      <button type="button" onClick={() => setMenuActivo('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
-                      <button type="button" onClick={() => setMenuActivo('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
-                      <button type="button" onClick={() => setMenuActivo('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
+                      <button type="button" onClick={() => handleCambioMenu('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
+                      <button type="button" onClick={() => handleCambioMenu('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
+                      <button type="button" onClick={() => handleCambioMenu('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
                     </div>
                   )}
                 </div>
-                <button type="button" onClick={() => setMenuActivo('soporte')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}>📣 Avisos y Soporte</button>
+                <button type="button" onClick={() => handleCambioMenu('soporte')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}>📣 Avisos y Soporte</button>
               </>
             )}
           </nav>
@@ -306,20 +289,20 @@ export default function App() {
       </aside>
 
       <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+        {menuActivo === 'empleados' && rolUpper !== 'EMPLEADO' && (
+          <UsuariosView 
+            usuarioActual={usuarioActual} 
+            empleados={empleados} 
+            onReload={cargarEmpleados}
+            styles={styles}
+          />
+        )}
         {menuActivo === 'notificaciones' && (
           <NotificacionesView 
             usuarioActual={usuarioActual} 
             empleados={empleados} 
             notificaciones={notificaciones}
-            onReload={cargarNotificaciones}
-            styles={styles}
-          />
-        )}
-        {menuActivo === 'empleados' && (
-          <UsuariosView 
-            usuarioActual={usuarioActual} 
-            empleados={empleados} 
-            onReload={cargarEmpleados}
+            cargarNotificaciones={cargarNotificaciones}
             styles={styles}
           />
         )}

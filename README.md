@@ -202,3 +202,66 @@ Aplicación web modular orientada a la logística y control de operaciones, desa
 ### 🎨 Sistema de Diseño e Identidad (Brand System TA)
 - [ ] **Paleta Oficial TA:** Cargar y aplicar los colores corporativos definitivos en el objeto global de estilos.
 - [ ] **Tipografía e Interfaz:** Integrar la fuente oficial de la marca y maquetar los bordes, tarjetas y espaciados finales.
+
+---------------------------------------------------------------------------------------------------------------------
+
+# TA Industrias Digitales - Operational Management Platform (ORBIT)
+
+Plataforma de gestión operacional, simulación y control de datos para **TA Industrias Digitales** y sus divisiones integradas. Este sistema centraliza el monitoreo de infraestructura, la planificación de recursos y la analítica predictiva bajo un esquema de seguridad de acceso granular.
+
+---
+
+## 1. Arquitectura de Seguridad y Control de Acceso (RBAC)
+
+El sistema implementa un modelo **Role-Based Access Control (RBAC)** estricto en la capa del Backend. Las jerarquías de usuarios y sus límites operacionales se definen según la siguiente matriz:
+
+### Matriz de Permisos
+
+| Módulo / Acción | Admin | Supervisor | Empleado |
+| :--- | :---: | :---: | :---: |
+| **Gestión de Admins / Roles Altos** |  Full |  Denegado |  Denegado |
+| **Gestión de Supervisores** |  Full |  Denegado |  Denegado |
+| **Gestión de Empleados** |  Full |  Lectura |  Denegado |
+| **Planificación (Crear / Modificar)** |  Full |  Full |  Lectura |
+| **Ejecución de Tareas Asignadas** |  Full |  Full |  Full |
+| **Operaciones Estructurales (DDL)** |  Solo Scripts |  Denegado |  Denegado |
+
+---
+
+## 2. Reglas Inviolables de Seguridad y Dominio
+
+1. **Jerarquía y Protección de Admins:**
+   - Ningún usuario con rol `SUPERVISOR` o `EMPLEADO` puede listar datos sensibles, editar o eliminar a usuarios con rol `ADMIN` o superior.
+   - La eliminación o degradación de un `ADMIN` solo puede ser ejecutada por otro `ADMIN` mediante endpoints autenticados y auditados.
+
+2. **Aislamiento de la Capa de Datos (Prohibición de DDL en Caliente):**
+   - El módulo de **Planificaciones** y la interfaz gráfica interactúan exclusivamente mediante operaciones DML (`SELECT`, `INSERT`, `UPDATE`, `DELETE`).
+   - Queda estrictamente prohibido ejecutar consultas DDL (`CREATE TABLE`, `DROP TABLE`, `ALTER TABLE`) a través de los controladores de la aplicación o acciones disparadas por usuarios finales. Las modificaciones de esquema solo ocurren mediante migraciones de base de datos controladas.
+
+3. **Validación en Backend (Middleware Protocol):**
+   - El Frontend **no** es un límite de seguridad. Todos los endpoints sensibles en el Backend deben validar el rol y los permisos del payload del token (JWT) antes de procesar la transacción.
+
+---
+
+## 3. Módulos del Ecosistema ORBIT
+
+- **ORBIT Core:** Autenticación, sesión, RBAC y registros de auditoría (*Audit Logs*).
+- **ORBIT Spatial / Planificación:** Control e interconexión de proyectos, asignación de tareas e infraestructura sobre esquemas predefinidos.
+- **ORBIT Analytics:** Visualización de métricas predictivas y reportes ejecutivos.
+
+---
+
+## 4. Estructura del Proyecto
+
+```text
+├── backend/
+│   ├── src/
+│   │   ├── controllers/      # Controladores HTTP (Validación de entrada)
+│   │   ├── middlewares/      # Autenticación JWT y RBAC por Roles
+│   │   ├── models/           # Definición de esquemas / ORM (Solo DML)
+│   │   ├── routes/           # Rutas protegidas
+│   │   └── services/         # Lógica de negocio y reglas de dominio
+│   └── migrations/           # Scripts DDL para la base de datos
+├── frontend/
+│   └── src/                  # Interfaz gráfica (Sujeta a políticas del backend)
+└── README.md

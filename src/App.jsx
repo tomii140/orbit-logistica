@@ -97,6 +97,7 @@ export default function App() {
             if (userProfile) {
               setUsuarioActual(userProfile);
               setModoAcceso(userProfile.rol);
+              setMenuActivo(userProfile.rol?.toUpperCase() === 'EMPLEADO' ? 'notificaciones' : 'empleados');
             } else {
               setUsuarioActual(null);
               setModoAcceso(null);
@@ -121,6 +122,7 @@ export default function App() {
           if (userProfile) {
             setUsuarioActual(userProfile);
             setModoAcceso(userProfile.rol);
+            setMenuActivo(userProfile.rol?.toUpperCase() === 'EMPLEADO' ? 'notificaciones' : 'empleados');
           } else {
             setUsuarioActual(null);
             setModoAcceso(null);
@@ -146,8 +148,6 @@ export default function App() {
     if (usuarioActual) {
       cargarEmpleados();
       cargarNotificaciones();
-      const userRol = usuarioActual.rol?.toUpperCase();
-      setMenuActivo(userRol === 'EMPLEADO' ? 'notificaciones' : 'empleados');
     }
   }, [usuarioActual, cargarNotificaciones]);
 
@@ -171,11 +171,12 @@ export default function App() {
       )
       .subscribe();
 
+    // Suscripción ajustada a la tabla 'soporte_tickets'
     const channelSoporte = supabase
       .channel('realtime_soporte')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'soporte_mensajes' },
+        { event: 'INSERT', schema: 'public', table: 'soporte_tickets' },
         () => {
           playNotificationSound('support');
         }
@@ -315,7 +316,12 @@ export default function App() {
           />
         )}
         {menuActivo === 'empleados' && (
-          <UsuariosView />
+          <UsuariosView 
+            usuarioActual={usuarioActual} 
+            empleados={empleados} 
+            onReload={cargarEmpleados}
+            styles={styles}
+          />
         )}
         {menuActivo === 'planificacion_salon' && (
           <PlanificacionSectorView tituloSector="🏬 SALÓN Y CAJAS" colorBadge="#38bdf8" usuarioActual={usuarioActual} styles={styles} />
@@ -331,5 +337,5 @@ export default function App() {
         )}
       </main>
     </div>
-  );
+  ); 
 }

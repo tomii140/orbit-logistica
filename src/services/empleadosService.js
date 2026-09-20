@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabaseClient';
 
 export const empleadosService = {
-  // Obtener todos los empleados
+  // Obtener empleados
   async obtenerEmpleados() {
     const { data, error } = await supabase
       .from('empleados')
@@ -12,7 +12,7 @@ export const empleadosService = {
     return data;
   },
 
-  // Pre-registrar o actualizar el rol de un usuario
+  // Guardar o actualizar registro
   async guardarEmpleado(empleado) {
     const { data, error } = await supabase
       .from('empleados')
@@ -20,6 +20,23 @@ export const empleadosService = {
       .select();
 
     if (error) throw error;
+    return data;
+  },
+
+  // Eliminar empleado de forma segura
+  async eliminarEmpleado(idEmpleadoTarget) {
+    const { data, error } = await supabase
+      .from('empleados')
+      .delete()
+      .eq('id', idEmpleadoTarget);
+
+    if (error) {
+      // Mensaje claro si la política RLS del backend bloquea la acción
+      if (error.code === '42501') {
+        throw new Error('No tienes permisos suficientes para eliminar este registro.');
+      }
+      throw error;
+    }
     return data;
   }
 };

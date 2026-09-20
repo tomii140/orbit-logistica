@@ -10,6 +10,7 @@ const styles = {
   input: { backgroundColor: '#0f172a', border: '1px solid #334155', color: '#ffffff', padding: '8px 12px', borderRadius: '4px', flex: '1', minWidth: '150px' },
   select: { backgroundColor: '#0f172a', border: '1px solid #334155', color: '#ffffff', padding: '8px 12px', borderRadius: '4px' },
   btnSubmit: { backgroundColor: '#16a34a', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
+  btnDelete: { backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
   table: { width: '100%', borderCollapse: 'collapse', color: '#f8fafc', backgroundColor: '#1e293b', borderRadius: '6px', overflow: 'hidden' },
   th: { backgroundColor: '#0f172a', padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid #334155', color: '#94a3b8', fontSize: '13px' },
   td: { padding: '10px 12px', borderBottom: '1px solid #334155', fontSize: '14px' },
@@ -87,6 +88,24 @@ export default function UsuariosView() {
     if (!error) cargarUsuarios();
   };
 
+  const handleEliminarUsuario = async (id, email) => {
+    if (!window.confirm(`¿Estás seguro de eliminar al usuario ${email}? Perderá el acceso al sistema inmediatamente.`)) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('empleados')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      setMensaje({ tipo: 'error', texto: `Error al eliminar: ${error.message}` });
+    } else {
+      setMensaje({ tipo: 'exito', texto: `Usuario ${email} eliminado correctamente.` });
+      cargarUsuarios();
+    }
+  };
+
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Alta y Gestión de Usuarios</h2>
@@ -154,12 +173,15 @@ export default function UsuariosView() {
                     {rolNormalizado}
                   </b>
                 </td>
-                <td style={styles.td}>
+                <td style={{ ...styles.td, display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <select value={rolNormalizado} onChange={(e) => handleCambiarRol(u.id, e.target.value)} style={styles.select}>
                     <option value="EMPLEADO">Empleado</option>
                     <option value="SUPERVISOR">Supervisor</option>
                     <option value="ADMIN">Admin</option>
                   </select>
+                  <button type="button" onClick={() => handleEliminarUsuario(u.id, u.email)} style={styles.btnDelete}>
+                    🗑️ Eliminar
+                  </button>
                 </td>
               </tr>
             );

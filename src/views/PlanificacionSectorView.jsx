@@ -4,6 +4,7 @@ import { enviarPlanificacionWhatsApp } from '../utils/whatsappHelper';
 
 export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActual, styles }) {
   const esGestionador = usuarioActual.rol === 'admin' || usuarioActual.rol === 'supervisor';
+  const esAdmin = usuarioActual.rol?.toUpperCase() === 'ADMIN';
   
   const sectorNombre = tituloSector.includes('SALÓN') ? 'Salón' 
     : tituloSector.includes('CARNE') ? 'Carnicería' : 'Panadería';
@@ -20,6 +21,20 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
     inicioReposicion: '', 
     repositores: 4 
   });
+
+  // Función de auditoría para registrar modificaciones críticas de ADMIN
+  const registrarAuditoria = async (accion, detalles) => {
+    if (!esAdmin) return;
+    try {
+      await supabase.from('admin_auditoria').insert([{
+        admin_email: usuarioActual.email,
+        accion: accion,
+        detalles: detalles
+      }]);
+    } catch (err) {
+      console.error('Error registrando auditoría:', err);
+    }
+  };
 
   const cargarListaEmpleados = useCallback(async () => {
     const { data } = await supabase.from('empleados').select('id, nombre, apellido').eq('activo', true);
@@ -58,6 +73,9 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
 
     const { error } = await supabase.from('registros').insert([payload]);
     if (!error) {
+      if (esAdmin) {
+        await registrarAuditoria('ALTA CAMIÓN', `Registro de camión en sector ${sectorNombre} - Fecha: ${camionForm.fecha}`);
+      }
       cargarCamiones();
       setCamionForm({ fecha: new Date().toISOString().split('T')[0], bultos: '', horaLlegada: '', inicioReposicion: '', repositores: 4 });
     } else {
@@ -66,9 +84,20 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
   };
 
   const borrarCamion = async (id) => {
-    if (!confirm('¿Eliminar este registro de camión?')) return;
+    if (esAdmin) {
+      const confirmacion = window.confirm('⚠️ ADVERTENCIA DE ADMINISTRADOR\n\n¿Estás seguro de que deseas eliminar este registro de camión?\nEsta acción quedará guardada en el historial de auditoría.');
+      if (!confirmacion) return;
+    } else {
+      if (!confirm('¿Eliminar este registro de camión?')) return;
+    }
+
     const { error } = await supabase.from('registros').delete().eq('id', id);
-    if (!error) cargarCamiones();
+    if (!error) {
+      if (esAdmin) {
+        await registrarAuditoria('ELIMINACIÓN CAMIÓN', `Se eliminó el registro de camión ID: ${id} en ${sectorNombre}`);
+      }
+      cargarCamiones();
+    }
   };
 
   const agregarFilaCuadrante = async () => {
@@ -83,6 +112,9 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
 
     const { data, error } = await supabase.from('planificacion_cuadrante').insert([nuevaFila]).select();
     if (!error && data) {
+      if (esAdmin) {
+        await registrarAuditoria('ASIGNACIÓN PERSONAL', `Nueva fila de cuadrante creada para ${nombreInicial} en ${sectorNombre}`);
+      }
       setCuadrantePersonal([...cuadrantePersonal, data[0]]);
       setEditandoFilaId(data[0].id);
     }
@@ -90,13 +122,28 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
 
   const actualizarCeldaCuadrante = async (id, campo, valor) => {
     setCuadrantePersonal(cuadrantePersonal.map(item => item.id === id ? { ...item, [campo]: valor } : item));
-    await supabase.from('planificacion_cuadrante').update({ [campo]: valor }).eq('id', id);
+    const { error } = await supabase.from('planificacion_cuadrante').update({ [campo]: valor }).eq('id', id);
+    
+    if (!error && esAdmin) {
+      await registrarAuditoria('MODIFICACIÓN CUADRANTE', `Cambio en ID ${id} [${campo} -> ${valor}] en sector ${sectorNombre}`);
+    }
   };
 
   const borrarFilaCuadrante = async (id) => {
-    if (!confirm('¿Eliminar esta asignación?')) return;
+    if (esAdmin) {
+      const confirmacion = window.confirm('⚠️ ADVERTENCIA DE ADMINISTRADOR\n\n¿Estás seguro de que deseas eliminar esta asignación del cuadrante?\nLa acción quedará registrada.');
+      if (!confirmacion) return;
+    } else {
+      if (!confirm('¿Eliminar esta asignación?')) return;
+    }
+
     const { error } = await supabase.from('planificacion_cuadrante').delete().eq('id', id);
-    if (!error) setCuadrantePersonal(cuadrantePersonal.filter(x => x.id !== id));
+    if (!error) {
+      if (esAdmin) {
+        await registrarAuditoria('ELIMINACIÓN CUADRANTE', `Se eliminó la fila ID: ${id} del cuadrante en ${sectorNombre}`);
+      }
+      setCuadrantePersonal(cuadrantePersonal.filter(x => x.id !== id));
+    }
   };
 
   return (

@@ -56,28 +56,18 @@ export default function App() {
       if (error) console.error("Error al consultar empleados:", error);
 
       if (!data) {
-        const insertPayload = {
-          nombre: emailUser.split('@')[0],
-          apellido: '',
-          email: cleanEmail,
-          rol: cleanEmail === ADMIN_EMAIL_MAESTRO.toLowerCase() ? 'ADMIN' : 'EMPLEADO',
-          activo: true
-        };
-        const { data: newEmp, error: insertError } = await supabase
-          .from('empleados')
-          .insert([insertPayload])
-          .select()
-          .single();
-
-        if (!insertError) data = newEmp;
+        await supabase.auth.signOut();
+        alert(`Acceso no autorizado: El correo ${cleanEmail} no ha sido dado de alta por un Administrador.`);
+        return null;
       }
 
-      if (data && cleanEmail === ADMIN_EMAIL_MAESTRO.toLowerCase()) {
+      if (cleanEmail === ADMIN_EMAIL_MAESTRO.toLowerCase()) {
         data.rol = 'ADMIN';
       }
       return data;
     } catch (err) {
-      console.error("Error sincronizando usuario:", err);
+      console.error("Error validando usuario:", err);
+      await supabase.auth.signOut();
       return null;
     }
   }, []);
@@ -103,9 +93,14 @@ export default function App() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.email && isMounted) {
           const userProfile = await sincronizarUsuarioGoogle(session.user.email);
-          if (isMounted && userProfile) {
-            setUsuarioActual(userProfile);
-            setModoAcceso(userProfile.rol);
+          if (isMounted) {
+            if (userProfile) {
+              setUsuarioActual(userProfile);
+              setModoAcceso(userProfile.rol);
+            } else {
+              setUsuarioActual(null);
+              setModoAcceso(null);
+            }
           }
         }
       } catch (err) {
@@ -122,9 +117,14 @@ export default function App() {
       if (event === 'SIGNED_IN' && session?.user?.email) {
         setLoading(true);
         const userProfile = await sincronizarUsuarioGoogle(session.user.email);
-        if (isMounted && userProfile) {
-          setUsuarioActual(userProfile);
-          setModoAcceso(userProfile.rol);
+        if (isMounted) {
+          if (userProfile) {
+            setUsuarioActual(userProfile);
+            setModoAcceso(userProfile.rol);
+          } else {
+            setUsuarioActual(null);
+            setModoAcceso(null);
+          }
         }
         if (isMounted) setLoading(false);
       } else if (event === 'SIGNED_OUT') {

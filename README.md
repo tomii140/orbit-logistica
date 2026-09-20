@@ -150,3 +150,55 @@ Resumen del estado de desarrollo del sistema ORBIT Logística tras el último sp
 ### 🎨 Sistema de Diseño e Identidad (Brand System TA)
 - [ ] **Paleta Oficial TA:** Cargar y aplicar los colores corporativos definitivos en el objeto global de estilos.
 - [ ] **Tipografía e Interfaz:** Integrar la fuente oficial de la marca y maquetar los bordes, tarjetas y espaciados finales.
+# 🚀 ORBIT Logística - Sistema de Gestión y Planificación
+
+Aplicación web modular orientada a la logística y control de operaciones, desarrollada con React, Vite, Tailwind CSS y Supabase.
+
+---------------------------------------------------------------------------------------------------------------------
+
+# 🚀 ORBIT Logística - Sistema de Gestión y Planificación
+
+Aplicación web modular orientada a la logística y control de operaciones, desarrollada con React, Vite, Tailwind CSS y Supabase.
+
+---
+
+## 🟢 1. Objetivos Cumplidos (100%)
+
+### 🛠️ Arquitectura y Refactorización de Código
+- **Estructura Modular:** Desacoplamiento total del archivo monolítico `App.jsx` dividiendo la lógica en directorios claros: `/views`, `/services`, `/utils` y `/components`.
+- **Gestión de Sesiones:** Autenticación fluida con Google OAuth y sincronización automática del perfil de usuario y rol en Supabase.
+
+### 🔒 Seguridad y Blindaje de Datos (RLS)
+- **Row Level Security (RLS) Activo:** Aplicación de políticas estrictas a nivel de base de datos en Supabase para las tablas `empleados`, `notificaciones`, `planificacion_cuadrante`, `registros` y `soporte_tickets`.
+- **Aislamiento por Rol:** Restricción de permisos según el rol (`ADMIN`, `SUPERVISOR`, `EMPLEADO`) asegurando que los usuarios solo accedan o modifiquen la información autorizada.
+
+### 🔔 Sistema de Alertas Sonoras
+- **Web Audio API:** Integración de un sintetizador nativo de audio en `soundNotifier.js` sin dependencia de archivos mp3 externos.
+- **Suscripciones Realtime:** Escucha de eventos `INSERT` en tiempo real mediante Supabase para activar alertas auditivas diferenciadas (notificaciones operativas vs. soporte urgente).
+
+### 📲 Integración con WhatsApp
+- **Exportación con Un Clic:** Generación dinámica de mensajes y enlaces (`wa.me`) desde `whatsappHelper.js` y `BotonWhatsApp.jsx`.
+- **Soporte Multiplataforma:** Transición automática que abre WhatsApp Web en navegadores de escritorio y la aplicación nativa en dispositivos móviles (Android/iOS).
+
+### 💬 Canal de Avisos y Soporte Técnico
+- **Gestión de Tickets:** Módulo en `SoporteView.jsx` que permite la comunicación directa y estructurada entre los empleados/supervisores y la administración.
+
+---
+
+## ⚙️ 2. Resolución de Incidentes y Despliegue en Producción
+- **Migración a CI/CD:** Transición exitosa desde despliegues manuales (Netlify Drop) hacia integración continua sincronizada directamente con el repositorio de GitHub.
+- **Inyección de Variables de Entorno:** Configuración segura de credenciales privadas (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`) en Netlify para evitar errores de inicialización del cliente en producción.
+- **Sincronización de Autenticación (OAuth):** Ajuste de las *Redirect URLs* y dominios permitidos en Supabase Dashboard para solucionar errores 404 de redirección post-login.
+
+---
+
+## 🔴 3. Tareas Pendientes y Próximos Pasos
+
+### 🧪 Pruebas Integrales y Testing en Entorno Real (En Progreso)
+- [ ] **QA y Testing de Usuario:** Probar el flujo completo de la aplicación desde dispositivos móviles y de escritorio.
+- [ ] **Verificación de Notificaciones en Vivo:** Validar el comportamiento del sonido y alertas en tiempo real con múltiples usuarios simulados en paralelo.
+- [ ] **Auditoría de Roles:** Confirmar que las restricciones de lectura y escritura de RLS se ejecuten correctamente según el tipo de usuario.
+
+### 🎨 Sistema de Diseño e Identidad (Brand System TA)
+- [ ] **Paleta Oficial TA:** Cargar y aplicar los colores corporativos definitivos en el objeto global de estilos.
+- [ ] **Tipografía e Interfaz:** Integrar la fuente oficial de la marca y maquetar los bordes, tarjetas y espaciados finales.

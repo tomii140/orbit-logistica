@@ -4,28 +4,11 @@ import SoporteView from './views/SoporteView';
 import NotificacionesView from './views/NotificacionesView';
 import UsuariosView from './views/UsuariosView';
 import PlanificacionSectorView from './views/PlanificacionSectorView';
+import OrbitLogo from './components/OrbitLogo';
+import TALogo from './components/TALogo';
+import { themeStyles } from './styles/theme';
 
 const ADMIN_EMAIL_MAESTRO = "tomasaguero140@gmail.com";
-
-const styles = {
-  centerContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#0f172a' },
-  cardLogin: { backgroundColor: '#1e293b', padding: '32px', borderRadius: '8px', border: '1px solid #334155', width: '100%', maxWidth: '400px', textAlign: 'center' },
-  btnPortal: { width: '100%', padding: '12px', marginBottom: '12px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
-  btnPrimary: { border: 'none', padding: '10px 16px', borderRadius: '6px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
-  btnDanger: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', width: '100%' },
-  btnNav: { width: '100%', padding: '10px 12px', color: '#f8fafc', border: 'none', textAlign: 'left', borderRadius: '6px', cursor: 'pointer', marginBottom: '4px' },
-  btnSubNav: { width: '100%', padding: '8px 12px', color: '#94a3b8', border: 'none', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', marginBottom: '2px', fontSize: '13px' },
-  btnLink: { background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', marginBottom: '16px', padding: 0 },
-  textError: { color: '#f87171', fontSize: '13px', marginBottom: '12px' },
-  cardSection: { backgroundColor: '#1e293b', padding: '16px', borderRadius: '6px', border: '1px solid #334155' },
-  cardInner: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '6px', border: '1px solid #334155', marginBottom: '8px' },
-  table: { width: '100%', borderCollapse: 'collapse', color: '#f8fafc' },
-  td: { padding: '8px', borderBottom: '1px solid #334155' },
-  thRow: { backgroundColor: '#0f172a', textAlign: 'left' },
-  inputTable: { backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '4px' },
-  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '16px' },
-  btnSuccess: { backgroundColor: '#16a34a', color: '#fff', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer' }
-};
 
 export default function App() {
   const [modoAcceso, setModoAcceso] = useState(null);
@@ -111,7 +94,6 @@ export default function App() {
       setUsuarioActual({ ...userProfile, rol: rolNormalizado });
       setModoAcceso(rolNormalizado);
 
-      // Asignación de menú por defecto según perfil RBAC
       if (rolNormalizado === 'ADMIN') {
         setMenuActivo('empleados');
       } else {
@@ -196,37 +178,100 @@ export default function App() {
 
   if (loading) {
     return (
-      <div style={styles.centerContainer}>
-        <p style={{ color: '#38bdf8' }}>Cargando sesión...</p>
-      </div>
-    );
-  }
-
-  if (!modoAcceso && !usuarioActual) {
-    return (
-      <div style={styles.centerContainer}>
-        <div style={styles.cardLogin}>
-          <h2 style={{ color: '#34d399', margin: '0 0 8px 0' }}>📦 ORBIT Logística</h2>
-          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '24px' }}>Seleccioná el portal de acceso:</p>
-          <button type="button" onClick={() => setModoAcceso('ADMIN')} style={{ ...styles.btnPortal, backgroundColor: '#eab308', color: '#000' }}>👑 ADMINISTRADOR GENERAL</button>
-          <button type="button" onClick={() => setModoAcceso('SUPERVISOR')} style={{ ...styles.btnPortal, backgroundColor: '#2563eb', color: '#fff' }}>💼 PORTAL SUPERVISORES</button>
-          <button type="button" onClick={() => setModoAcceso('EMPLEADO')} style={{ ...styles.btnPortal, backgroundColor: '#059669', color: '#fff' }}>👤 PORTAL EMPLEADOS</button>
+      <div style={{ ...themeStyles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <OrbitLogo size={56} />
+          <p style={{ color: '#a19ea5', marginTop: '16px', letterSpacing: '2px', fontSize: '12px', textTransform: 'uppercase' }}>
+            Iniciando Ecosistema ORBIT...
+          </p>
         </div>
       </div>
     );
   }
 
+  // Pantalla de Selección de Portal
+  if (!modoAcceso && !usuarioActual) {
+    return (
+      <div style={{ ...themeStyles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ ...themeStyles.cardSection, textAlign: 'center', maxWidth: '420px', width: '100%', padding: '40px 32px' }}>
+          <OrbitLogo size={64} />
+          <h1 style={{ ...themeStyles.brandTitle, marginTop: '16px' }}>O R B I T</h1>
+          <p style={themeStyles.brandSubtitle}>Operational Management Platform</p>
+          
+          <div style={{ margin: '32px 0 24px 0', borderTop: '1px solid #22262d', paddingTop: '24px' }}>
+            <p style={{ color: '#b0aeb4', fontSize: '12px', marginBottom: '20px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              Seleccioná el portal de acceso:
+            </p>
+            
+            <button 
+              type="button" 
+              onClick={() => setModoAcceso('ADMIN')} 
+              style={{ ...themeStyles.btnPrimary, width: '100%', marginBottom: '12px', padding: '12px', borderColor: '#dcd9d2' }}
+            >
+              👑 Portal Administrador
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setModoAcceso('SUPERVISOR')} 
+              style={{ ...themeStyles.btnPrimary, width: '100%', marginBottom: '12px', padding: '12px' }}
+            >
+              💼 Portal Supervisores
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setModoAcceso('EMPLEADO')} 
+              style={{ ...themeStyles.btnPrimary, width: '100%', padding: '12px' }}
+            >
+              👤 Portal Empleados
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '32px' }}>
+            <TALogo size={20} color="#a19ea5" />
+            <span style={{ fontSize: '9px', letterSpacing: '2px', color: '#a19ea5', textTransform: 'uppercase' }}>
+              TA Industrias Digitales
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pantalla de Login con Google
   if (!usuarioActual) {
     return (
-      <div style={styles.centerContainer}>
-        <div style={styles.cardLogin}>
-          <button type="button" onClick={() => setModoAcceso(null)} style={styles.btnLink}>← Volver a selección de portal</button>
-          <h3 style={{ color: modoAcceso === 'ADMIN' ? '#facc15' : '#34d399', margin: '0 0 16px 0' }}>Acceso {modoAcceso?.toUpperCase()}</h3>
-          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>Iniciá sesión con tu cuenta de Google institucional/Gmail para acceder al panel.</p>
-          {errorLogin && <p style={styles.textError}>{errorLogin}</p>}
-          <button type="button" onClick={handleGoogleLogin} style={{ ...styles.btnPrimary, backgroundColor: '#ea4335', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '12px' }}>
-            <span>🌐</span> Iniciar sesión con Google
+      <div style={{ ...themeStyles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ ...themeStyles.cardSection, textAlign: 'center', maxWidth: '420px', width: '100%', padding: '40px 32px' }}>
+          <button 
+            type="button" 
+            onClick={() => setModoAcceso(null)} 
+            style={{ background: 'none', border: 'none', color: '#a19ea5', cursor: 'pointer', marginBottom: '20px', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase' }}
+          >
+            ← Volver a selección de portal
           </button>
+          
+          <OrbitLogo size={48} />
+          <h3 style={{ ...themeStyles.brandTitle, fontSize: '18px', marginTop: '16px' }}>Acceso {modoAcceso?.toUpperCase()}</h3>
+          <p style={{ color: '#b0aeb4', fontSize: '12px', margin: '16px 0 24px 0', lineHeight: '1.5' }}>
+            Iniciá sesión con tu cuenta de Google institucional para validar tus permisos en la plataforma.
+          </p>
+
+          {errorLogin && <p style={{ color: '#f87171', fontSize: '12px', marginBottom: '16px' }}>{errorLogin}</p>}
+
+          <button 
+            type="button" 
+            onClick={handleGoogleLogin} 
+            style={{ ...themeStyles.btnPrimary, width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', borderColor: '#dcd9d2' }}
+          >
+            <span>🌐</span> CONTINUAR CON GOOGLE
+          </button>
+
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '32px' }}>
+            <TALogo size={18} color="#a19ea5" />
+            <span style={{ fontSize: '9px', letterSpacing: '2px', color: '#a19ea5', textTransform: 'uppercase' }}>
+              TA Industrias Digitales
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -234,48 +279,125 @@ export default function App() {
 
   const rolUpper = (usuarioActual.rol || 'EMPLEADO').toUpperCase();
 
+  // Panel Principal de la App
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
-      <aside style={{ width: '260px', backgroundColor: '#1e293b', borderRight: '1px solid #334155', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#121417', color: '#dcd9d2', fontFamily: "'Montserrat', sans-serif" }}>
+      
+      {/* Sidebar de Navegación Lateral */}
+      <aside style={{ width: '280px', backgroundColor: '#181b20', borderRight: '1px solid #22262d', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ padding: '20px 16px', borderBottom: '1px solid #334155' }}>
-            <h2 style={{ fontSize: '16px', margin: 0, color: '#34d399' }}>📦 ORBIT Logística</h2>
-            <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
-              Rol: <b style={{ color: rolUpper === 'ADMIN' ? '#facc15' : rolUpper === 'SUPERVISOR' ? '#38bdf8' : '#4ade80' }}>{rolUpper}</b>
-            </span>
+          {/* Header del Sidebar */}
+          <div style={{ padding: '24px 20px', borderBottom: '1px solid #22262d', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <OrbitLogo size={36} />
+            <div>
+              <h2 style={{ fontSize: '16px', margin: 0, fontWeight: '500', letterSpacing: '4px', color: '#dcd9d2' }}>O R B I T</h2>
+              <span style={{ fontSize: '9px', color: '#a19ea5', letterSpacing: '2px', textTransform: 'uppercase', display: 'block', marginTop: '2px' }}>
+                ROL: <b style={{ color: rolUpper === 'ADMIN' ? '#dcd9d2' : '#b0aeb4' }}>{rolUpper}</b>
+              </span>
+            </div>
           </div>
 
-          <nav style={{ padding: '12px 8px' }}>
+          {/* Menú Principal */}
+          <nav style={{ padding: '20px 12px' }}>
             {/* Exclusivo para ADMIN */}
             {rolUpper === 'ADMIN' && (
               <button 
                 type="button" 
                 onClick={() => handleCambioMenu('empleados')} 
-                style={{ ...styles.btnNav, backgroundColor: menuActivo === 'empleados' ? '#2563eb' : 'transparent' }}
+                style={{
+                  ...themeStyles.btnPrimary,
+                  width: '100%',
+                  textAlign: 'left',
+                  marginBottom: '8px',
+                  backgroundColor: menuActivo === 'empleados' ? '#22262d' : 'transparent',
+                  borderColor: menuActivo === 'empleados' ? '#dcd9d2' : 'transparent'
+                }}
               >
                 👥 Alta y Gestión de Usuarios
               </button>
             )}
 
-            {/* Accesible para ADMIN, SUPERVISOR y EMPLEADO */}
+            {/* Accesible para todos */}
             <button 
               type="button" 
               onClick={() => handleCambioMenu('notificaciones')} 
-              style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}
+              style={{
+                ...themeStyles.btnPrimary,
+                width: '100%',
+                textAlign: 'left',
+                marginBottom: '8px',
+                backgroundColor: menuActivo === 'notificaciones' ? '#22262d' : 'transparent',
+                borderColor: menuActivo === 'notificaciones' ? '#dcd9d2' : 'transparent'
+              }}
             >
               🔔 {rolUpper === 'EMPLEADO' ? 'Mis Notificaciones' : 'Notificaciones y Envíos'}
             </button>
 
-            <div>
-              <button type="button" onClick={() => setSubmenuPlanificacion(!submenuPlanificacion)} style={{ ...styles.btnNav, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
+            {/* Submenú Desplegable de Planificación */}
+            <div style={{ marginBottom: '8px' }}>
+              <button 
+                type="button" 
+                onClick={() => setSubmenuPlanificacion(!submenuPlanificacion)} 
+                style={{
+                  ...themeStyles.btnPrimary,
+                  width: '100%',
+                  textAlign: 'left',
+                  backgroundColor: 'transparent',
+                  borderColor: 'transparent',
+                  color: '#a19ea5',
+                  display: 'flex',
+                  justify: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
                 <span>📅 {rolUpper === 'EMPLEADO' ? 'Ver Planificaciones' : 'Planificaciones'}</span>
-                <span>{submenuPlanificacion ? '▼' : '▶'}</span>
+                <span style={{ fontSize: '10px' }}>{submenuPlanificacion ? '▼' : '▶'}</span>
               </button>
+              
               {submenuPlanificacion && (
-                <div style={{ paddingLeft: '16px', marginTop: '2px' }}>
-                  <button type="button" onClick={() => handleCambioMenu('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
-                  <button type="button" onClick={() => handleCambioMenu('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
-                  <button type="button" onClick={() => handleCambioMenu('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
+                <div style={{ paddingLeft: '12px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => handleCambioMenu('planificacion_salon')} 
+                    style={{
+                      ...themeStyles.btnPrimary,
+                      fontSize: '10px',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      backgroundColor: menuActivo === 'planificacion_salon' ? '#22262d' : 'transparent',
+                      borderColor: menuActivo === 'planificacion_salon' ? '#dcd9d2' : 'transparent'
+                    }}
+                  >
+                    🏬 Salón y Cajas
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => handleCambioMenu('planificacion_carne')} 
+                    style={{
+                      ...themeStyles.btnPrimary,
+                      fontSize: '10px',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      backgroundColor: menuActivo === 'planificacion_carne' ? '#22262d' : 'transparent',
+                      borderColor: menuActivo === 'planificacion_carne' ? '#dcd9d2' : 'transparent'
+                    }}
+                  >
+                    🥩 Carne y Carniceros
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => handleCambioMenu('planificacion_panaderia')} 
+                    style={{
+                      ...themeStyles.btnPrimary,
+                      fontSize: '10px',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      backgroundColor: menuActivo === 'planificacion_panaderia' ? '#22262d' : 'transparent',
+                      borderColor: menuActivo === 'planificacion_panaderia' ? '#dcd9d2' : 'transparent'
+                    }}
+                  >
+                    🥖 Panadería y Lácteos
+                  </button>
                 </div>
               )}
             </div>
@@ -283,27 +405,52 @@ export default function App() {
             <button 
               type="button" 
               onClick={() => handleCambioMenu('soporte')} 
-              style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}
+              style={{
+                ...themeStyles.btnPrimary,
+                width: '100%',
+                textAlign: 'left',
+                backgroundColor: menuActivo === 'soporte' ? '#22262d' : 'transparent',
+                borderColor: menuActivo === 'soporte' ? '#dcd9d2' : 'transparent'
+              }}
             >
               📣 Avisos y Soporte
             </button>
           </nav>
         </div>
 
-        <div style={{ padding: '16px', borderTop: '1px solid #334155', backgroundColor: '#0f172a' }}>
-          <div style={{ fontSize: '12px', fontWeight: 'bold' }}>{usuarioActual.nombre} {usuarioActual.apellido}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '12px' }}>{usuarioActual.email}</div>
-          <button type="button" onClick={handleLogout} style={styles.btnDanger}>Cerrar Sesión</button>
+        {/* Footer del Sidebar con Usuario y Marca */}
+        <div style={{ padding: '20px 16px', borderTop: '1px solid #22262d', backgroundColor: '#14171a' }}>
+          <div style={{ fontSize: '12px', fontWeight: '500', color: '#dcd9d2' }}>
+            {usuarioActual.nombre} {usuarioActual.apellido}
+          </div>
+          <div style={{ fontSize: '10px', color: '#a19ea5', marginBottom: '16px', wordBreak: 'break-all' }}>
+            {usuarioActual.email}
+          </div>
+          <button 
+            type="button" 
+            onClick={handleLogout} 
+            style={{ ...themeStyles.btnDanger, width: '100%', padding: '8px 12px' }}
+          >
+            Cerrar Sesión
+          </button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '20px' }}>
+            <TALogo size={16} color="#a19ea5" />
+            <span style={{ fontSize: '8px', letterSpacing: '2px', color: '#a19ea5', textTransform: 'uppercase' }}>
+              TA Industrias Digitales
+            </span>
+          </div>
         </div>
       </aside>
 
-      <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+      {/* Contenido Principal */}
+      <main style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
         {menuActivo === 'empleados' && rolUpper === 'ADMIN' && (
           <UsuariosView 
             usuarioActual={usuarioActual} 
             empleados={empleados} 
             onReload={cargarEmpleados}
-            styles={styles}
+            styles={themeStyles}
           />
         )}
         {menuActivo === 'notificaciones' && (
@@ -312,22 +459,23 @@ export default function App() {
             empleados={empleados} 
             notificaciones={notificaciones}
             cargarNotificaciones={cargarNotificaciones}
-            styles={styles}
+            styles={themeStyles}
           />
         )}
         {menuActivo === 'planificacion_salon' && (
-          <PlanificacionSectorView tituloSector="🏬 SALÓN Y CAJAS" colorBadge="#38bdf8" usuarioActual={usuarioActual} styles={styles} />
+          <PlanificacionSectorView tituloSector="🏬 SALÓN Y CAJAS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
         )}
         {menuActivo === 'planificacion_carne' && (
-          <PlanificacionSectorView tituloSector="🥩 CARNE Y CARNICEROS" colorBadge="#ef4444" usuarioActual={usuarioActual} styles={styles} />
+          <PlanificacionSectorView tituloSector="🥩 CARNE Y CARNICEROS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
         )}
         {menuActivo === 'planificacion_panaderia' && (
-          <PlanificacionSectorView tituloSector="🥖 PANADERÍA Y LÁCTEOS" colorBadge="#facc15" usuarioActual={usuarioActual} styles={styles} />
+          <PlanificacionSectorView tituloSector="🥖 PANADERÍA Y LÁCTEOS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
         )}
         {menuActivo === 'soporte' && (
-          <SoporteView usuarioActual={usuarioActual} />
+          <SoporteView usuarioActual={usuarioActual} styles={themeStyles} />
         )}
       </main>
+
     </div>
   ); 
 }

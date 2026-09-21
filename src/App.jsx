@@ -176,20 +176,21 @@ export default function App() {
     setErrorLogin('');
   };
 
+  // Pantalla de Carga con Animación de Giro Continuo
   if (loading) {
     return (
       <div style={{ ...themeStyles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <OrbitLogo size={56} />
-          <p style={{ color: '#a19ea5', marginTop: '16px', letterSpacing: '2px', fontSize: '12px', textTransform: 'uppercase' }}>
-            Iniciando Ecosistema ORBIT...
+          <OrbitLogo size={56} spinning={true} />
+          <p style={{ color: '#a19ea5', marginTop: '20px', letterSpacing: '3px', fontSize: '11px', textTransform: 'uppercase' }}>
+            INICIANDO ECOSISTEMA ORBIT...
           </p>
         </div>
       </div>
     );
   }
 
-  // Pantalla de Selección de Portal
+  // Selección de Portal
   if (!modoAcceso && !usuarioActual) {
     return (
       <div style={{ ...themeStyles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -199,7 +200,7 @@ export default function App() {
           <p style={themeStyles.brandSubtitle}>Operational Management Platform</p>
           
           <div style={{ margin: '32px 0 24px 0', borderTop: '1px solid #22262d', paddingTop: '24px' }}>
-            <p style={{ color: '#b0aeb4', fontSize: '12px', marginBottom: '20px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            <p style={{ color: '#b0aeb4', fontSize: '11px', marginBottom: '20px', letterSpacing: '2px', textTransform: 'uppercase' }}>
               Seleccioná el portal de acceso:
             </p>
             
@@ -208,21 +209,21 @@ export default function App() {
               onClick={() => setModoAcceso('ADMIN')} 
               style={{ ...themeStyles.btnPrimary, width: '100%', marginBottom: '12px', padding: '12px', borderColor: '#dcd9d2' }}
             >
-              👑 Portal Administrador
+              PORTAL ADMINISTRADOR
             </button>
             <button 
               type="button" 
               onClick={() => setModoAcceso('SUPERVISOR')} 
               style={{ ...themeStyles.btnPrimary, width: '100%', marginBottom: '12px', padding: '12px' }}
             >
-              💼 Portal Supervisores
+              PORTAL SUPERVISORES
             </button>
             <button 
               type="button" 
               onClick={() => setModoAcceso('EMPLEADO')} 
               style={{ ...themeStyles.btnPrimary, width: '100%', padding: '12px' }}
             >
-              👤 Portal Empleados
+              PORTAL EMPLEADOS
             </button>
           </div>
 
@@ -237,7 +238,7 @@ export default function App() {
     );
   }
 
-  // Pantalla de Login con Google
+  // Login Google
   if (!usuarioActual) {
     return (
       <div style={{ ...themeStyles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -251,7 +252,7 @@ export default function App() {
           </button>
           
           <OrbitLogo size={48} />
-          <h3 style={{ ...themeStyles.brandTitle, fontSize: '18px', marginTop: '16px' }}>Acceso {modoAcceso?.toUpperCase()}</h3>
+          <h3 style={{ ...themeStyles.brandTitle, fontSize: '18px', marginTop: '16px' }}>ACCESO {modoAcceso?.toUpperCase()}</h3>
           <p style={{ color: '#b0aeb4', fontSize: '12px', margin: '16px 0 24px 0', lineHeight: '1.5' }}>
             Iniciá sesión con tu cuenta de Google institucional para validar tus permisos en la plataforma.
           </p>
@@ -263,7 +264,7 @@ export default function App() {
             onClick={handleGoogleLogin} 
             style={{ ...themeStyles.btnPrimary, width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', borderColor: '#dcd9d2' }}
           >
-            <span>🌐</span> CONTINUAR CON GOOGLE
+            CONTINUAR CON GOOGLE
           </button>
 
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '32px' }}>
@@ -279,14 +280,12 @@ export default function App() {
 
   const rolUpper = (usuarioActual.rol || 'EMPLEADO').toUpperCase();
 
-  // Panel Principal de la App
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#121417', color: '#dcd9d2', fontFamily: "'Montserrat', sans-serif" }}>
       
-      {/* Sidebar de Navegación Lateral */}
+      {/* Sidebar Corporativo Sin Emojis */}
       <aside style={{ width: '280px', backgroundColor: '#181b20', borderRight: '1px solid #22262d', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
-          {/* Header del Sidebar */}
           <div style={{ padding: '24px 20px', borderBottom: '1px solid #22262d', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <OrbitLogo size={36} />
             <div>
@@ -297,9 +296,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Menú Principal */}
           <nav style={{ padding: '20px 12px' }}>
-            {/* Exclusivo para ADMIN */}
             {rolUpper === 'ADMIN' && (
               <button 
                 type="button" 
@@ -313,11 +310,10 @@ export default function App() {
                   borderColor: menuActivo === 'empleados' ? '#dcd9d2' : 'transparent'
                 }}
               >
-                👥 Alta y Gestión de Usuarios
+                ALTA Y GESTIÓN DE USUARIOS
               </button>
             )}
 
-            {/* Accesible para todos */}
             <button 
               type="button" 
               onClick={() => handleCambioMenu('notificaciones')} 
@@ -330,10 +326,9 @@ export default function App() {
                 borderColor: menuActivo === 'notificaciones' ? '#dcd9d2' : 'transparent'
               }}
             >
-              🔔 {rolUpper === 'EMPLEADO' ? 'Mis Notificaciones' : 'Notificaciones y Envíos'}
+              {rolUpper === 'EMPLEADO' ? 'MIS NOTIFICACIONES' : 'NOTIFICACIONES Y ENVÍOS'}
             </button>
 
-            {/* Submenú Desplegable de Planificación */}
             <div style={{ marginBottom: '8px' }}>
               <button 
                 type="button" 
@@ -350,8 +345,8 @@ export default function App() {
                   alignItems: 'center'
                 }}
               >
-                <span>📅 {rolUpper === 'EMPLEADO' ? 'Ver Planificaciones' : 'Planificaciones'}</span>
-                <span style={{ fontSize: '10px' }}>{submenuPlanificacion ? '▼' : '▶'}</span>
+                <span>{rolUpper === 'EMPLEADO' ? 'VER PLANIFICACIONES' : 'PLANIFICACIONES'}</span>
+                <span style={{ fontSize: '9px' }}>{submenuPlanificacion ? '▼' : '▶'}</span>
               </button>
               
               {submenuPlanificacion && (
@@ -368,7 +363,7 @@ export default function App() {
                       borderColor: menuActivo === 'planificacion_salon' ? '#dcd9d2' : 'transparent'
                     }}
                   >
-                    🏬 Salón y Cajas
+                    SALÓN Y CAJAS
                   </button>
                   <button 
                     type="button" 
@@ -382,7 +377,7 @@ export default function App() {
                       borderColor: menuActivo === 'planificacion_carne' ? '#dcd9d2' : 'transparent'
                     }}
                   >
-                    🥩 Carne y Carniceros
+                    CARNE Y CARNICEROS
                   </button>
                   <button 
                     type="button" 
@@ -396,7 +391,7 @@ export default function App() {
                       borderColor: menuActivo === 'planificacion_panaderia' ? '#dcd9d2' : 'transparent'
                     }}
                   >
-                    🥖 Panadería y Lácteos
+                    PANADERÍA Y LÁCTEOS
                   </button>
                 </div>
               )}
@@ -413,12 +408,11 @@ export default function App() {
                 borderColor: menuActivo === 'soporte' ? '#dcd9d2' : 'transparent'
               }}
             >
-              📣 Avisos y Soporte
+              AVISOS Y SOPORTE
             </button>
           </nav>
         </div>
 
-        {/* Footer del Sidebar con Usuario y Marca */}
         <div style={{ padding: '20px 16px', borderTop: '1px solid #22262d', backgroundColor: '#14171a' }}>
           <div style={{ fontSize: '12px', fontWeight: '500', color: '#dcd9d2' }}>
             {usuarioActual.nombre} {usuarioActual.apellido}
@@ -431,7 +425,7 @@ export default function App() {
             onClick={handleLogout} 
             style={{ ...themeStyles.btnDanger, width: '100%', padding: '8px 12px' }}
           >
-            Cerrar Sesión
+            CERRAR SESIÓN
           </button>
           
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '20px' }}>
@@ -443,7 +437,6 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Contenido Principal */}
       <main style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
         {menuActivo === 'empleados' && rolUpper === 'ADMIN' && (
           <UsuariosView 
@@ -463,13 +456,13 @@ export default function App() {
           />
         )}
         {menuActivo === 'planificacion_salon' && (
-          <PlanificacionSectorView tituloSector="🏬 SALÓN Y CAJAS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
+          <PlanificacionSectorView tituloSector="SALÓN Y CAJAS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
         )}
         {menuActivo === 'planificacion_carne' && (
-          <PlanificacionSectorView tituloSector="🥩 CARNE Y CARNICEROS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
+          <PlanificacionSectorView tituloSector="CARNE Y CARNICEROS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
         )}
         {menuActivo === 'planificacion_panaderia' && (
-          <PlanificacionSectorView tituloSector="🥖 PANADERÍA Y LÁCTEOS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
+          <PlanificacionSectorView tituloSector="PANADERÍA Y LÁCTEOS" colorBadge="#dcd9d2" usuarioActual={usuarioActual} styles={themeStyles} />
         )}
         {menuActivo === 'soporte' && (
           <SoporteView usuarioActual={usuarioActual} styles={themeStyles} />

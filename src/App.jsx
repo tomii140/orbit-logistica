@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from './config/supabaseClient';
-import { playNotificationSound } from './utils/soundNotifier';
 import SoporteView from './views/SoporteView';
 import NotificacionesView from './views/NotificacionesView';
 import UsuariosView from './views/UsuariosView';
@@ -29,15 +28,12 @@ const styles = {
 };
 
 export default function App() {
-  // Log de diagnóstico en renderizado
-  console.log("🚀 [DIAGNÓSTICO] App.jsx se está ejecutando - Versión actualizada con logs");
-
   const [modoAcceso, setModoAcceso] = useState(null);
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorLogin, setErrorLogin] = useState('');
 
-  const [menuActivo, setMenuActivo] = useState('empleados');
+  const [menuActivo, setMenuActivo] = useState('notificaciones');
   const [submenuPlanificacion, setSubmenuPlanificacion] = useState(true);
   const [empleados, setEmpleados] = useState([]);
   const [notificaciones, setNotificaciones] = useState([]);
@@ -46,19 +42,19 @@ export default function App() {
     if (!emailUser) return null;
     try {
       const cleanEmail = emailUser.toLowerCase().trim();
-      console.log(`🔍 [DIAGNÓSTICO] Sincronizando usuario: ${cleanEmail}`);
-      
+
       let { data, error } = await supabase
         .from('empleados')
         .select('*')
         .eq('email', cleanEmail)
+        .eq('activo', true)
         .maybeSingle();
 
-      if (error) console.error("❌ Error al consultar empleados:", error);
+      if (error) console.error("Error al consultar empleados:", error);
 
       if (!data) {
         await supabase.auth.signOut();
-        alert(`Acceso no autorizado: El correo ${cleanEmail} no ha sido dado de alta por un Administrador.`);
+        alert(`Acceso no autorizado: El correo ${cleanEmail} no está registrado o fue deshabilitado.`);
         return null;
       }
 
@@ -68,39 +64,44 @@ export default function App() {
         data.rol = data.rol.toUpperCase();
       }
 
-      console.log("✅ [DIAGNÓSTICO] Datos de usuario obtenidos:", data);
       return data;
     } catch (err) {
-      console.error("❌ Error validando usuario:", err);
+      console.error("Error validando usuario:", err);
       await supabase.auth.signOut();
       return null;
     }
   }, []);
 
   const cargarEmpleados = useCallback(async () => {
-    const { data, error } = await supabase.from('empleados').select('*').order('nombre');
+    const { data, error } = await supabase
+      .from('empleados')
+      .select('*')
+      .eq('activo', true)
+      .order('nombre');
+
     if (!error) {
-      console.log(`👥 [DIAGNÓSTICO] Empleados cargados: ${data?.length || 0}`);
       setEmpleados(data || []);
     } else {
-      console.error("❌ Error al cargar empleados:", error);
+      console.error("Error al cargar empleados:", error);
     }
   }, []);
 
   const cargarNotificaciones = useCallback(async () => {
     if (!usuarioActual) return;
-    let query = supabase.from('notificaciones').select('*, empleados(nombre, apellido, email)').order('fecha_envio', { ascending: false });
-    
+    let query = supabase
+      .from('notificaciones')
+      .select('*, empleados(nombre, apellido, email)')
+      .order('fecha_envio', { ascending: false });
+
     if (usuarioActual.rol === 'EMPLEADO') {
       query = query.eq('empleado_id', usuarioActual.id);
     }
-    
+
     const { data, error } = await query;
     if (!error) {
-      console.log(`🔔 [DIAGNÓSTICO] Notificaciones cargadas: ${data?.length || 0}`);
       setNotificaciones(data || []);
     } else {
-      console.error("❌ Error al cargar notificaciones:", error);
+      console.error("Error al cargar notificaciones:", error);
     }
   }, [usuarioActual]);
 
@@ -109,7 +110,13 @@ export default function App() {
       const rolNormalizado = (userProfile.rol || 'EMPLEADO').toUpperCase();
       setUsuarioActual({ ...userProfile, rol: rolNormalizado });
       setModoAcceso(rolNormalizado);
-      setMenuActivo(rolNormalizado === 'EMPLEADO' ? 'notificaciones' : 'empleados');
+
+      // Asignación de menú por defecto según perfil RBAC
+      if (rolNormalizado === 'ADMIN') {
+        setMenuActivo('empleados');
+      } else {
+        setMenuActivo('notificaciones');
+      }
     } else {
       setUsuarioActual(null);
       setModoAcceso(null);
@@ -127,7 +134,7 @@ export default function App() {
           if (isMounted) aplicarPerfilUsuario(userProfile);
         }
       } catch (err) {
-        console.error("❌ Error al obtener sesión:", err);
+        console.error("Error al obtener sesión:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -137,7 +144,7 @@ export default function App() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
-      
+
       if (event === 'SIGNED_IN' && session?.user?.email) {
         setLoading(true);
         const userProfile = await sincronizarUsuarioGoogle(session.user.email);
@@ -168,7 +175,6 @@ export default function App() {
   }, [usuarioActual, cargarEmpleados, cargarNotificaciones]);
 
   const handleCambioMenu = (nuevoMenu) => {
-    console.log(`📌 [DIAGNÓSTICO] Navegando a la vista: ${nuevoMenu}`);
     setMenuActivo(nuevoMenu);
   };
 
@@ -240,44 +246,47 @@ export default function App() {
           </div>
 
           <nav style={{ padding: '12px 8px' }}>
-            {rolUpper === 'EMPLEADO' ? (
-              <>
-                <button type="button" onClick={() => handleCambioMenu('notificaciones')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}>🔔 Mis Notificaciones</button>
-                <div>
-                  <button type="button" onClick={() => setSubmenuPlanificacion(!submenuPlanificacion)} style={{ ...styles.btnNav, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>📅 Ver Planificaciones</span>
-                    <span>{submenuPlanificacion ? '▼' : '▶'}</span>
-                  </button>
-                  {submenuPlanificacion && (
-                    <div style={{ paddingLeft: '16px', marginTop: '2px' }}>
-                      <button type="button" onClick={() => handleCambioMenu('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
-                      <button type="button" onClick={() => handleCambioMenu('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
-                      <button type="button" onClick={() => handleCambioMenu('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
-                    </div>
-                  )}
-                </div>
-                <button type="button" onClick={() => handleCambioMenu('soporte')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}>📣 Avisos y Soporte</button>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => handleCambioMenu('empleados')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'empleados' ? '#2563eb' : 'transparent' }}>👥 {rolUpper === 'ADMIN' ? 'Alta y Gestión de Usuarios' : 'Añadir Empleados'}</button>
-                <button type="button" onClick={() => handleCambioMenu('notificaciones')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}>🔔 Notificaciones y Envíos</button>
-                <div>
-                  <button type="button" onClick={() => setSubmenuPlanificacion(!submenuPlanificacion)} style={{ ...styles.btnNav, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>📅 Planificaciones</span>
-                    <span>{submenuPlanificacion ? '▼' : '▶'}</span>
-                  </button>
-                  {submenuPlanificacion && (
-                    <div style={{ paddingLeft: '16px', marginTop: '2px' }}>
-                      <button type="button" onClick={() => handleCambioMenu('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
-                      <button type="button" onClick={() => handleCambioMenu('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
-                      <button type="button" onClick={() => handleCambioMenu('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
-                    </div>
-                  )}
-                </div>
-                <button type="button" onClick={() => handleCambioMenu('soporte')} style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}>📣 Avisos y Soporte</button>
-              </>
+            {/* Exclusivo para ADMIN */}
+            {rolUpper === 'ADMIN' && (
+              <button 
+                type="button" 
+                onClick={() => handleCambioMenu('empleados')} 
+                style={{ ...styles.btnNav, backgroundColor: menuActivo === 'empleados' ? '#2563eb' : 'transparent' }}
+              >
+                👥 Alta y Gestión de Usuarios
+              </button>
             )}
+
+            {/* Accesible para ADMIN, SUPERVISOR y EMPLEADO */}
+            <button 
+              type="button" 
+              onClick={() => handleCambioMenu('notificaciones')} 
+              style={{ ...styles.btnNav, backgroundColor: menuActivo === 'notificaciones' ? '#2563eb' : 'transparent' }}
+            >
+              🔔 {rolUpper === 'EMPLEADO' ? 'Mis Notificaciones' : 'Notificaciones y Envíos'}
+            </button>
+
+            <div>
+              <button type="button" onClick={() => setSubmenuPlanificacion(!submenuPlanificacion)} style={{ ...styles.btnNav, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
+                <span>📅 {rolUpper === 'EMPLEADO' ? 'Ver Planificaciones' : 'Planificaciones'}</span>
+                <span>{submenuPlanificacion ? '▼' : '▶'}</span>
+              </button>
+              {submenuPlanificacion && (
+                <div style={{ paddingLeft: '16px', marginTop: '2px' }}>
+                  <button type="button" onClick={() => handleCambioMenu('planificacion_salon')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_salon' ? '#3b82f6' : 'transparent' }}>🏬 Salón y Cajas</button>
+                  <button type="button" onClick={() => handleCambioMenu('planificacion_carne')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_carne' ? '#3b82f6' : 'transparent' }}>🥩 Carne y Carniceros</button>
+                  <button type="button" onClick={() => handleCambioMenu('planificacion_panaderia')} style={{ ...styles.btnSubNav, backgroundColor: menuActivo === 'planificacion_panaderia' ? '#3b82f6' : 'transparent' }}>🥖 Panadería y Lácteos</button>
+                </div>
+              )}
+            </div>
+
+            <button 
+              type="button" 
+              onClick={() => handleCambioMenu('soporte')} 
+              style={{ ...styles.btnNav, backgroundColor: menuActivo === 'soporte' ? '#2563eb' : 'transparent' }}
+            >
+              📣 Avisos y Soporte
+            </button>
           </nav>
         </div>
 
@@ -289,7 +298,7 @@ export default function App() {
       </aside>
 
       <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
-        {menuActivo === 'empleados' && rolUpper !== 'EMPLEADO' && (
+        {menuActivo === 'empleados' && rolUpper === 'ADMIN' && (
           <UsuariosView 
             usuarioActual={usuarioActual} 
             empleados={empleados} 

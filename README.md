@@ -209,7 +209,7 @@ Aplicación web modular orientada a la logística y control de operaciones, desa
 
 Plataforma de gestión operacional, simulación y control de datos para **TA Industrias Digitales** y sus divisiones integradas. Este sistema centraliza el monitoreo de infraestructura, la planificación de recursos y la analítica predictiva bajo un esquema de seguridad de acceso granular.
 
----
+------------------------------------------------------------------------------------------------------------------------
 
 ## 1. Arquitectura de Seguridad y Control de Acceso (RBAC)
 
@@ -265,3 +265,92 @@ El sistema implementa un modelo **Role-Based Access Control (RBAC)** estricto en
 ├── frontend/
 │   └── src/                  # Interfaz gráfica (Sujeta a políticas del backend)
 └── README.md
+
+# TA Industrias Digitales - Operational Management Platform (ORBIT)
+
+Plataforma de gestión operacional, simulación y control de datos para **TA Industrias Digitales** y sus divisiones integradas. Este sistema centraliza el monitoreo de infraestructura, la planificación de recursos y el control de personal mediante un esquema de acceso por roles (RBAC).
+
+---
+
+## 1. Arquitectura de Seguridad y Control de Acceso (RBAC)
+
+El sistema implementa un modelo **Role-Based Access Control (RBAC)** sobre Supabase. Las jerarquías de usuarios y sus límites operacionales se definen según la siguiente matriz:
+
+### Matriz de Permisos
+
+| Módulo / Acción | Admin | Supervisor | Empleado |
+| :--- | :---: | :---: | :---: |
+| **Gestión de Admins / Roles Altos** | Full | Denegado | Denegado |
+| **Gestión de Supervisores** | Full | Denegado | Denegado |
+| **Gestión de Empleados** | Full | Lectura | Denegado |
+| **Planificación (Crear / Modificar)** | Full | Full | Lectura |
+| **Notificaciones y Avisos** | Full | Full | Lectura |
+| **Soporte y Tickets** | Full | Full | Emisión / Lectura Propia |
+| **Operaciones Estructurales (DDL)** | Solo Scripts SQL | Denegado | Denegado |
+
+---
+
+## 2. Reglas Inviolables de Seguridad y Dominio
+
+1. **Jerarquía y Protección de Admins:**
+   - Ningún usuario con rol `SUPERVISOR` o `EMPLEADO` puede modificar, editar o eliminar registros de usuarios con rol `ADMIN`.
+   - La baja o modificación de un `ADMIN` requiere permisos validados a nivel de políticas de base de datos (RLS).
+
+2. **Aislamiento de la Capa de Datos (Prohibición de DDL en Caliente):**
+   - Los módulos de **Planificación** y **Gestión de Usuarios** interactúan exclusivamente mediante operaciones DML (`SELECT`, `INSERT`, `UPDATE`, `DELETE`).
+   - Mantenimiento de esquemas y DDL exclusivo mediante migraciones y SQL directo en consola de administración.
+
+3. **Seguridad en Capa de Datos (Row Level Security - RLS):**
+   - Las reglas de autorización deben ser forzadas en la base de datos (Supabase RLS) para impedir que manipulaciones en el cliente permitan escalado de privilegios.
+
+---
+
+## 3. Estructura del Proyecto
+
+```text
+├── src/
+│   ├── config/
+│   │   └── supabaseClient.js      # Cliente de conexión a Supabase
+│   ├── utils/
+│   │   └── soundNotifier.js       # Notificaciones sonoras
+│   ├── views/
+│   │   ├── NotificacionesView.jsx # Control de envíos y notificaciones
+│   │   ├── PlanificacionSectorView.jsx # Planificación por sectores (Salón, Carne, Panadería)
+│   │   ├── SoporteView.jsx        # Gestión de tickets e incidencias
+│   │   └── UsuariosView.jsx       # Alta y administración de personal (RBAC)
+│   ├── App.jsx                    # Enrutador principal, control de sesión y menú
+│   └── main.jsx                   # Punto de entrada React
+├── .env                           # Variables de entorno (Supabase URL & Keys)
+├── package.json
+└── README.md
+## 5. Tareas Pendientes y Hoja de Ruta (Roadmap)
+
+Para alcanzar el nivel de producción y cumplir al 100% con los estándares definidos en la arquitectura de seguridad y dominio, se deben completar los siguientes puntos:
+
+### 🔒 1. Seguridad e Infraestructura (Capa de Datos)
+- [ ] **Implementar Row Level Security (RLS) en Supabase:**
+  - Activar RLS en la tabla `empleados`.
+  - Crear políticas de lectura (`SELECT`) habilitadas para usuarios autenticados.
+  - Crear políticas de modificación (`INSERT`, `UPDATE`, `DELETE`) restringidas estrictamente a usuarios con el rol `ADMIN` (mediante verificación de token JWT o consulta sobre la tabla).
+- [ ] **Validación de Token en Servidor / Edge Functions:**
+  - Migrar operaciones críticas de administración a una Supabase Edge Function o API REST propia para evitar la invocación DML directa desde el cliente.
+
+### 👥 2. Control de Acceso y Gestión de Usuarios (Frontend)
+- [ ] **Ajuste Fino de Permisos en `App.jsx`:**
+  - Ocultar la pestaña **"Alta y Gestión de Usuarios"** para el rol `SUPERVISOR`, dejando el módulo exclusivo para el rol `ADMIN` según la Matriz de Permisos.
+- [ ] **Edición Rápida de Roles en `UsuariosView.jsx`:**
+  - Agregar la capacidad de modificar el rol de un usuario existente en la tabla en caliente mediante un selector interactivo sin requerir la eliminación y reinserción del registro.
+- [ ] **Manejo de Estados de Cuenta:**
+  - Implementar campo `activo` (boolean) en la tabla `empleados` para permitir la deshabilitación lógica de usuarios en lugar de la eliminación física.
+
+### 📅 3. Módulos Operacionales
+- [ ] **Planificación Sectorial Dinámica:**
+  - Conectar los módulos de *Salón y Cajas*, *Carne y Carniceros* y *Panadería y Lácteos* con sus respectivas tablas persistentes en Supabase (`planificaciones_salon`, `planificaciones_carne`, etc.).
+- [ ] **Persistencia de Soporte y Tickets:**
+  - Vincular la vista de **Avisos y Soporte** con la tabla `tickets` en Supabase para registrar solicitudes en tiempo real y permitir el cambio de estados (*Pendiente*, *En Proceso*, *Resuelto*).
+
+### 🧪 4. Pruebas y Calidad de Código
+- [ ] **Auditoría de Consola:**
+  - Remover o parametrizar mediante variables de entorno los `console.log` de diagnóstico introducidos durante la fase de depuración.
+- [ ] **Manejo Global de Errores:**
+  - Implementar alertas o tostadas (toast notifications) en la interfaz para capturar fallos de red o de permisos sin bloquear el flujo del usuario.

@@ -1,4 +1,4 @@
-import supabase from '../config/supabaseClient';
+import { supabase } from '../config/supabaseClient';
 
 export const soporteService = {
   async crearTicket({ empleadoId, tipo, asunto, mensaje }) {

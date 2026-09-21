@@ -24,26 +24,32 @@ export default function UsuariosView({ usuarioActual, empleados, onReload, style
     try {
       const emailLimpio = nuevoEmail.trim().toLowerCase();
 
-      // Verificar si ya existe
+      // Verificar si ya existe el registro
       const { data: existente } = await supabase
         .from('empleados')
-        .select('id')
+        .select('id, activo')
         .eq('email', emailLimpio)
         .maybeSingle();
 
       if (existente) {
-        setMensajeEstado({ tipo: 'error', texto: 'El correo electrónico ya está registrado.' });
+        setMensajeEstado({
+          tipo: 'error',
+          texto: existente.activo
+            ? 'El correo electrónico ya está registrado y activo.'
+            : 'El correo electrónico pertenece a un usuario inactivo.'
+        });
         setGuardando(false);
         return;
       }
 
-      // Insertar nuevo usuario
+      // Insertar nuevo usuario activo
       const { error } = await supabase.from('empleados').insert([
         {
           nombre: nuevoNombre.trim(),
           apellido: nuevoApellido.trim(),
           email: emailLimpio,
-          rol: nuevoRol
+          rol: nuevoRol,
+          activo: true
         }
       ]);
 
@@ -63,20 +69,45 @@ export default function UsuariosView({ usuarioActual, empleados, onReload, style
     }
   };
 
-  const handleEliminarUsuario = async (id, email) => {
+  const handleCambiarRol = async (id, email, nuevoRolAsignado) => {
     if (email.toLowerCase() === usuarioActual.email.toLowerCase()) {
-      alert('No podés eliminar tu propia cuenta activa.');
+      alert('No podés cambiar tu propio rol.');
+      if (onReload) onReload();
       return;
     }
 
-    if (!window.confirm(`¿Confirmás la eliminación del usuario ${email}?`)) return;
-
     try {
-      const { error } = await supabase.from('empleados').delete().eq('id', id);
+      const { error } = await supabase
+        .from('empleados')
+        .update({ rol: nuevoRolAsignado })
+        .eq('id', id);
+
       if (error) throw error;
       if (onReload) onReload();
     } catch (err) {
-      alert(`Error al eliminar: ${err.message}`);
+      alert(`Error al actualizar el rol: ${err.message}`);
+    }
+  };
+
+  const handleEliminarUsuario = async (id, email) => {
+    if (email.toLowerCase() === usuarioActual.email.toLowerCase()) {
+      alert('No podés desactivar tu propia cuenta.');
+      return;
+    }
+
+    if (!window.confirm(`¿Confirmás la desactivación del usuario ${email}?`)) return;
+
+    try {
+      // Borrado lógico: se marca activo = false
+      const { error } = await supabase
+        .from('empleados')
+        .update({ activo: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      if (onReload) onReload();
+    } catch (err) {
+      alert(`Error al desactivar usuario: ${err.message}`);
     }
   };
 
@@ -85,7 +116,7 @@ export default function UsuariosView({ usuarioActual, empleados, onReload, style
       <div>
         <h2 style={{ margin: '0 0 4px 0' }}>👥 Alta y Gestión de Usuarios</h2>
         <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>
-          Módulo para registrar personal y asignar roles dentro del sistema.
+          Módulo para registrar personal, gestionar roles y controlar accesos al sistema.
         </p>
       </div>
 
@@ -188,50 +219,83 @@ export default function UsuariosView({ usuarioActual, empleados, onReload, style
                   </td>
                 </tr>
               ) : (
-                empleados.map((emp) => (
-                  <tr key={emp.id}>
-                    <td style={styles.td}>{emp.nombre} {emp.apellido}</td>
-                    <td style={{ ...styles.td, color: '#94a3b8' }}>{emp.email}</td>
-                    <td style={{ ...styles.td, textAlign: 'center' }}>
-                      <span
-                        style={{
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          backgroundColor:
-                            emp.rol?.toUpperCase() === 'ADMIN'
-                              ? '#854d0e'
-                              : emp.rol?.toUpperCase() === 'SUPERVISOR'
-                              ? '#1e40af'
-                              : '#166534',
-                          color: '#fff'
-                        }}
-                      >
-                        {(emp.rol || 'EMPLEADO').toUpperCase()}
-                      </span>
-                    </td>
-                    {esAdmin && (
+                empleados.map((emp) => {
+                  const esPropioUsuario = emp.email.toLowerCase() === usuarioActual.email.toLowerCase();
+
+                  return (
+                    <tr key={emp.id}>
+                      <td style={styles.td}>{emp.nombre} {emp.apellido}</td>
+                      <td style={{ ...styles.td, color: '#94a3b8' }}>{emp.email}</td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleEliminarUsuario(emp.id, emp.email)}
-                          style={{
-                            backgroundColor: '#991b1b',
-                            color: '#fca5a5',
-                            border: 'none',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          Eliminar
-                        </button>
+                        {esAdmin ? (
+                          <select
+                            value={(emp.rol || 'EMPLEADO').toUpperCase()}
+                            disabled={esPropioUsuario}
+                            onChange={(e) => handleCambiarRol(emp.id, emp.email, e.target.value)}
+                            style={{
+                              ...styles.inputTable,
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              padding: '2px 4px',
+                              backgroundColor:
+                                emp.rol?.toUpperCase() === 'ADMIN'
+                                  ? '#854d0e'
+                                  : emp.rol?.toUpperCase() === 'SUPERVISOR'
+                                  ? '#1e40af'
+                                  : '#166534',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: esPropioUsuario ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <option value="EMPLEADO">EMPLEADO</option>
+                            <option value="SUPERVISOR">SUPERVISOR</option>
+                            <option value="ADMIN">ADMIN</option>
+                          </select>
+                        ) : (
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              backgroundColor:
+                                emp.rol?.toUpperCase() === 'ADMIN'
+                                  ? '#854d0e'
+                                  : emp.rol?.toUpperCase() === 'SUPERVISOR'
+                                  ? '#1e40af'
+                                  : '#166534',
+                              color: '#fff'
+                            }}
+                          >
+                            {(emp.rol || 'EMPLEADO').toUpperCase()}
+                          </span>
+                        )}
                       </td>
-                    )}
-                  </tr>
-                ))
+                      {esAdmin && (
+                        <td style={{ ...styles.td, textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            disabled={esPropioUsuario}
+                            onClick={() => handleEliminarUsuario(emp.id, emp.email)}
+                            style={{
+                              backgroundColor: esPropioUsuario ? '#475569' : '#991b1b',
+                              color: esPropioUsuario ? '#94a3b8' : '#fca5a5',
+                              border: 'none',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              cursor: esPropioUsuario ? 'not-allowed' : 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            Desactivar
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

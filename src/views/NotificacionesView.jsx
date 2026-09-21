@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../config/supabaseClient';
+import { playNotificationSound } from '../utils/soundNotifier';
 
 export function NotificacionesView({ usuarioActual, empleados, notificaciones, cargarNotificaciones, styles }) {
   const [nuevaNotif, setNuevaNotif] = useState({ empleado_id: '', asunto_titulo: '', mensaje: '', categoria: 'Turno' });
@@ -10,7 +11,10 @@ export function NotificacionesView({ usuarioActual, empleados, notificaciones, c
       .update({ leido: true, fecha_lectura: new Date().toISOString(), disponibilidad: respuesta })
       .eq('id', id);
 
-    if (!error) cargarNotificaciones();
+    if (!error) {
+      playNotificationSound('info');
+      cargarNotificaciones();
+    }
   };
 
   const enviarNotificacion = async (e) => {
@@ -26,6 +30,7 @@ export function NotificacionesView({ usuarioActual, empleados, notificaciones, c
     }]);
 
     if (!error) {
+      playNotificationSound(nuevaNotif.categoria);
       alert('Notificación enviada con éxito');
       setNuevaNotif({ empleado_id: '', asunto_titulo: '', mensaje: '', categoria: 'Turno' });
       cargarNotificaciones();

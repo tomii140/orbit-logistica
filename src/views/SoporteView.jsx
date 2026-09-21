@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../config/supabaseClient';
+import { playNotificationSound } from '../utils/soundNotifier';
 
 export default function SoporteView({ usuarioActual }) {
   const [mensajes, setMensajes] = useState([]);
@@ -36,6 +37,11 @@ export default function SoporteView({ usuarioActual }) {
         { event: 'INSERT', schema: 'public', table: 'soporte_mensajes' },
         (payload) => {
           setMensajes((prev) => [...prev, payload.new]);
+          
+          // Reproducir sonido si el mensaje es de otro usuario
+          if (payload.new.remitente_email?.toLowerCase() !== usuarioActual?.email?.toLowerCase()) {
+            playNotificationSound('support');
+          }
         }
       )
       .subscribe();
@@ -43,7 +49,7 @@ export default function SoporteView({ usuarioActual }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [usuarioActual]);
 
   useEffect(() => {
     if (!cargando) {

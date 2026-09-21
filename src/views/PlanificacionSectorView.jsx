@@ -3,9 +3,10 @@ import { supabase } from '../config/supabaseClient';
 import { enviarPlanificacionWhatsApp } from '../utils/whatsappHelper';
 
 export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActual, styles }) {
-  const esGestionador = usuarioActual.rol === 'admin' || usuarioActual.rol === 'supervisor';
-  const esAdmin = usuarioActual.rol?.toUpperCase() === 'ADMIN';
-  
+  const userRol = usuarioActual?.rol?.toLowerCase() || '';
+  const esAdmin = userRol === 'admin';
+  const esGestionador = esAdmin || userRol === 'supervisor';
+
   const sectorNombre = tituloSector.includes('SALÓN') ? 'Salón' 
     : tituloSector.includes('CARNE') ? 'Carnicería' : 'Panadería';
 
@@ -22,14 +23,13 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
     repositores: 4 
   });
 
-  // Función de auditoría para registrar modificaciones críticas de ADMIN
   const registrarAuditoria = async (accion, detalles) => {
     if (!esAdmin) return;
     try {
       await supabase.from('admin_auditoria').insert([{
         admin_email: usuarioActual.email,
-        accion: accion,
-        detalles: detalles
+        accion,
+        detalles
       }]);
     } catch (err) {
       console.error('Error registrando auditoría:', err);
@@ -37,18 +37,18 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
   };
 
   const cargarListaEmpleados = useCallback(async () => {
-    const { data } = await supabase.from('empleados').select('id, nombre, apellido').eq('activo', true);
-    if (data) setListaEmpleados(data);
+    const { data, error } = await supabase.from('empleados').select('id, nombre, apellido').eq('activo', true);
+    if (!error && data) setListaEmpleados(data);
   }, []);
 
   const cargarCamiones = useCallback(async () => {
-    const { data } = await supabase.from('registros').select('*').order('created_at', { ascending: false });
-    if (data) setRegistrosCamion(data);
+    const { data, error } = await supabase.from('registros').select('*').order('created_at', { ascending: false });
+    if (!error && data) setRegistrosCamion(data);
   }, []);
 
   const cargarCuadrante = useCallback(async () => {
-    const { data } = await supabase.from('planificacion_cuadrante').select('*').eq('sector', sectorNombre).order('id');
-    if (data) setCuadrantePersonal(data);
+    const { data, error } = await supabase.from('planificacion_cuadrante').select('*').eq('sector', sectorNombre).order('id');
+    if (!error && data) setCuadrantePersonal(data);
   }, [sectorNombre]);
 
   useEffect(() => {
@@ -84,12 +84,11 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
   };
 
   const borrarCamion = async (id) => {
-    if (esAdmin) {
-      const confirmacion = window.confirm('⚠️ ADVERTENCIA DE ADMINISTRADOR\n\n¿Estás seguro de que deseas eliminar este registro de camión?\nEsta acción quedará guardada en el historial de auditoría.');
-      if (!confirmacion) return;
-    } else {
-      if (!confirm('¿Eliminar este registro de camión?')) return;
-    }
+    const msj = esAdmin 
+      ? '⚠️ ADVERTENCIA DE ADMINISTRADOR\n\n¿Estás seguro de que deseas eliminar este registro de camión?\nEsta acción quedará guardada en el historial de auditoría.'
+      : '¿Eliminar este registro de camión?';
+
+    if (!window.confirm(msj)) return;
 
     const { error } = await supabase.from('registros').delete().eq('id', id);
     if (!error) {
@@ -97,6 +96,8 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
         await registrarAuditoria('ELIMINACIÓN CAMIÓN', `Se eliminó el registro de camión ID: ${id} en ${sectorNombre}`);
       }
       cargarCamiones();
+    } else {
+      alert(`Error al eliminar: ${error.message}`);
     }
   };
 
@@ -115,34 +116,44 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
       if (esAdmin) {
         await registrarAuditoria('ASIGNACIÓN PERSONAL', `Nueva fila de cuadrante creada para ${nombreInicial} en ${sectorNombre}`);
       }
-      setCuadrantePersonal([...cuadrantePersonal, data[0]]);
+      setCuadrantePersonal(prev => [...prev, data[0]]);
       setEditandoFilaId(data[0].id);
+    } else if (error) {
+      alert(`Error al agregar fila: ${error.message}`);
     }
   };
 
   const actualizarCeldaCuadrante = async (id, campo, valor) => {
-    setCuadrantePersonal(cuadrantePersonal.map(item => item.id === id ? { ...item, [campo]: valor } : item));
+    setCuadrantePersonal(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
+    
     const { error } = await supabase.from('planificacion_cuadrante').update({ [campo]: valor }).eq('id', id);
     
-    if (!error && esAdmin) {
+    if (error) {
+      alert(`Error al actualizar el campo ${campo}: ${error.message}`);
+      cargarCuadrante(); // Revertir estado local en caso de error de persistencia
+      return;
+    }
+
+    if (esAdmin) {
       await registrarAuditoria('MODIFICACIÓN CUADRANTE', `Cambio en ID ${id} [${campo} -> ${valor}] en sector ${sectorNombre}`);
     }
   };
 
   const borrarFilaCuadrante = async (id) => {
-    if (esAdmin) {
-      const confirmacion = window.confirm('⚠️ ADVERTENCIA DE ADMINISTRADOR\n\n¿Estás seguro de que deseas eliminar esta asignación del cuadrante?\nLa acción quedará registrada.');
-      if (!confirmacion) return;
-    } else {
-      if (!confirm('¿Eliminar esta asignación?')) return;
-    }
+    const msj = esAdmin
+      ? '⚠️ ADVERTENCIA DE ADMINISTRADOR\n\n¿Estás seguro de que deseas eliminar esta asignación del cuadrante?\nLa acción quedará registrada.'
+      : '¿Eliminar esta asignación?';
+
+    if (!window.confirm(msj)) return;
 
     const { error } = await supabase.from('planificacion_cuadrante').delete().eq('id', id);
     if (!error) {
       if (esAdmin) {
         await registrarAuditoria('ELIMINACIÓN CUADRANTE', `Se eliminó la fila ID: ${id} del cuadrante en ${sectorNombre}`);
       }
-      setCuadrantePersonal(cuadrantePersonal.filter(x => x.id !== id));
+      setCuadrantePersonal(prev => prev.filter(x => x.id !== id));
+    } else {
+      alert(`Error al eliminar fila: ${error.message}`);
     }
   };
 
@@ -162,7 +173,7 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
         </div>
       )}
 
-      {/* BLOQUE 1: RECEPCIÓN DE CAMIÓN CON BOTÓN DE WHATSAPP */}
+      {/* BLOQUE 1: RECEPCIÓN DE CAMIÓN */}
       <div style={styles.cardSection}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h3 style={{ margin: 0, color: '#facc15', fontSize: '15px' }}>🚛 Control de Camiones</h3>
@@ -176,11 +187,11 @@ export function PlanificacionSectorView({ tituloSector, colorBadge, usuarioActua
         
         {esGestionador && (
           <form onSubmit={agregarCamion} style={styles.formGrid}>
-            <input type="date" value={camionForm.fecha} onChange={e => setCamionForm({...camionForm, fecha: e.target.value})} style={styles.inputTable} />
-            <input type="number" placeholder="Cant. Bultos" value={camionForm.bultos} onChange={e => setCamionForm({...camionForm, bultos: e.target.value})} style={styles.inputTable} />
-            <input type="time" title="Hora Llegada" value={camionForm.horaLlegada} onChange={e => setCamionForm({...camionForm, horaLlegada: e.target.value})} style={styles.inputTable} />
-            <input type="time" title="Inicio Reposición" value={camionForm.inicioReposicion} onChange={e => setCamionForm({...camionForm, inicioReposicion: e.target.value})} style={styles.inputTable} />
-            <input type="number" placeholder="Repositores" value={camionForm.repositores} onChange={e => setCamionForm({...camionForm, repositores: e.target.value})} style={styles.inputTable} />
+            <input type="date" value={camionForm.fecha} onChange={e => setCamionForm(prev => ({...prev, fecha: e.target.value}))} style={styles.inputTable} />
+            <input type="number" placeholder="Cant. Bultos" value={camionForm.bultos} onChange={e => setCamionForm(prev => ({...prev, bultos: e.target.value}))} style={styles.inputTable} />
+            <input type="time" title="Hora Llegada" value={camionForm.horaLlegada} onChange={e => setCamionForm(prev => ({...prev, horaLlegada: e.target.value}))} style={styles.inputTable} />
+            <input type="time" title="Inicio Reposición" value={camionForm.inicioReposicion} onChange={e => setCamionForm(prev => ({...prev, inicioReposicion: e.target.value}))} style={styles.inputTable} />
+            <input type="number" placeholder="Repositores" value={camionForm.repositores} onChange={e => setCamionForm(prev => ({...prev, repositores: e.target.value}))} style={styles.inputTable} />
             <button type="submit" style={styles.btnSuccess}>+ Registrar Camión</button>
           </form>
         )}
